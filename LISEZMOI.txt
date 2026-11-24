@@ -4,6 +4,7 @@ Contenu du dossier
   index.html             l'application
   manifest.webmanifest   nom, couleurs et icônes pour l'installation
   sw.js                  fonctionnement hors réseau et mises à jour
+  version.json           numéro de version, pour la mise à jour automatique
   icons/                 icônes de l'écran d'accueil
   lib/                   modules PDF et ZIP, embarqués pour marcher sans réseau
 
@@ -29,5 +30,6 @@ Vos données
   Le dépôt public ne contient que l'application, jamais vos données clients.
 
 Mises à jour
-  Remplacer index.html et sw.js dans le dépôt (« Add file », « Upload files »).
-  À la prochaine ouverture avec du réseau, l'appli se met à jour toute seule.
+  Remplacer index.html, sw.js et version.json dans le dépôt (« Add file », « Upload files »).
+  Dès que l'appli est ouverte avec du réseau, elle charge la dernière version.
+  Si elle était déjà ouverte, un bandeau « Mettre à jour » s'affiche.

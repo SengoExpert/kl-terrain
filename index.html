@@ -1191,16 +1191,24 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').then(reg=>{
-    const ask=w=>{if(!w)return;const b=document.getElementById('upd');
-      if(performance.now()<8000){w.postMessage('skip');return}
-      b.hidden=false;document.getElementById('updBtn').onclick=()=>w.postMessage('skip')};
-    if(reg.waiting&&navigator.serviceWorker.controller)ask(reg.waiting);
-    reg.addEventListener('updatefound',()=>{const w=reg.installing;w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)ask(w)})});
-  }).catch(()=>{})});
-  let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!reloaded){reloaded=true;location.reload()}});
-}
+window.APP_VERSION='20261124-232824';
+(function(){
+  const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
+  let regRef=null;
+  async function check(){
+    if(!navigator.onLine)return;
+    try{const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)return;const v=(await r.json()).v;
+      if(v&&v!==window.APP_VERSION){if(regRef)try{await regRef.update()}catch(e){}
+        if(performance.now()<10000)location.reload();else banner()}}catch(e){}
+  }
+  if('serviceWorker' in navigator){
+    window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(reg=>{regRef=reg;
+      reg.addEventListener('updatefound',()=>{const w=reg.installing;w&&w.addEventListener('statechange',()=>{if(w.state==='installed'&&navigator.serviceWorker.controller)w.postMessage('skip')})});
+      if(reg.waiting)reg.waiting.postMessage('skip');check()}).catch(()=>check())});
+  }else window.addEventListener('load',check);
+  document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){if(regRef)regRef.update().catch(()=>{});check()}});
+  window.addEventListener('online',check);
+})();
 </script>
 
 </body>
