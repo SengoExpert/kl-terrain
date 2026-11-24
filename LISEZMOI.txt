@@ -1,0 +1,33 @@
+KL GROUPE TERRAIN, VERSION INSTALLABLE
+
+Contenu du dossier
+  index.html             l'application
+  manifest.webmanifest   nom, couleurs et icônes pour l'installation
+  sw.js                  fonctionnement hors réseau et mises à jour
+  icons/                 icônes de l'écran d'accueil
+  lib/                   modules PDF et ZIP, embarqués pour marcher sans réseau
+
+Mise en ligne sur GitHub Pages (une seule fois, depuis le Mac)
+  1. Créer un compte gratuit sur github.com.
+  2. Bouton « New repository » : nom kl-terrain, choisir « Public », puis « Create repository ».
+  3. Lien « uploading an existing file » : glisser tout le contenu de ce dossier
+     (les fichiers ET les dossiers icons et lib), puis « Commit changes ».
+  4. Onglet « Settings », menu « Pages » : Source « Deploy from a branch »,
+     branche « main », dossier « / (root) », puis « Save ».
+  5. Attendre une à deux minutes. L'adresse de l'appli s'affiche en haut de la page Pages,
+     sous la forme https://VOTRE-NOM.github.io/kl-terrain/
+
+Installation
+  iPhone et iPad : ouvrir l'adresse dans Safari, bouton Partager, « Sur l'écran d'accueil ».
+  Mac : ouvrir l'adresse dans Safari, menu Fichier, « Ajouter au Dock ».
+  Ouvrir l'appli une première fois avec du réseau : ensuite, elle fonctionne sans réseau.
+
+Vos données
+  Les saisies, les photos d'audit et le suivi des essais restent sur chaque appareil.
+  Onglet Suivi : « Exporter le suivi » pour ranger une copie dans OneDrive,
+  « Importer un suivi » pour le retrouver sur un autre appareil.
+  Le dépôt public ne contient que l'application, jamais vos données clients.
+
+Mises à jour
+  Remplacer index.html et sw.js dans le dépôt (« Add file », « Upload files »).
+  À la prochaine ouverture avec du réseau, l'appli se met à jour toute seule.
