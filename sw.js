@@ -1,5 +1,5 @@
-// KL Groupe Terrain : mode hors ligne. Version 20261124-224914
-const APP='kl-terrain-20261124-224914',FONTS='kl-terrain-polices';
+// KL Groupe Terrain : mode hors ligne. Version 20261124-231526
+const APP='kl-terrain-20261124-231526',FONTS='kl-terrain-polices';
 const FILES=["./", "index.html", "manifest.webmanifest", "lib/jspdf.umd.min.js", "lib/jspdf.plugin.autotable.min.js", "lib/jszip.min.js", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png"];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(APP).then(c=>c.addAll(FILES)))});
 self.addEventListener('message',e=>{if(e.data==='skip')self.skipWaiting()});
