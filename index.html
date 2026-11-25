@@ -73,6 +73,8 @@ textarea{min-height:80px;resize:vertical;background:var(--surface);border-color:
 .btn[disabled]{opacity:.5}
 .ghost{background:transparent;color:var(--brand-fg);border:1px solid var(--brand-fg);font-size:15px;padding:11px}
 .note{font-size:12px;color:var(--muted);margin:0}
+textarea.obs{min-height:120px;resize:vertical;overflow-y:auto;transition:height .15s}
+.obsbtn{align-self:flex-end}
 .inc{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--fg);cursor:pointer;padding:6px 0}
 .inc input[type=checkbox]{width:22px;height:22px;min-height:0;flex:0 0 22px;accent-color:var(--accent);margin:0;padding:0}
 .msg{font-size:13px;color:var(--muted);text-align:center;min-height:1em;margin:0}
@@ -177,7 +179,7 @@ select{appearance:auto}
   <div class="card"><h2>Projection sur 5 ans</h2><div class="grid two">
     <label for="f_hp">Hausse annuelle du prix du film (%)</label><input id="f_hp" inputmode="decimal" value="0">
   </div><div class="tiles" id="f_roi"></div><div class="chart" id="f_chart"></div></div>
-  <div class="card"><h2>Observations</h2><textarea id="f_notes" placeholder="Notes de la visite, remarques du client…"></textarea></div>
+  <div class="card"><h2>Observations</h2><textarea id="f_notes" class="obs" placeholder="Notes de la visite, remarques du client…"></textarea><button class="mini obsbtn" type="button" data-for="f_notes">Agrandir le cadre</button></div>
   <div class="card"><h2>Photos de l'essai</h2>
     <div class="photos">
       <label class="ph" for="f_ph1"><img id="f_im1" alt="Photo avant" hidden><span>Photo avant<small>film actuel</small></span></label>
@@ -232,7 +234,7 @@ select{appearance:auto}
   <div class="card"><h2>Projection sur 5 ans</h2><div class="grid two">
     <label for="h_hp">Hausse annuelle du prix du film (%)</label><input id="h_hp" inputmode="decimal" value="0">
   </div><div class="tiles" id="h_roi"></div><div class="chart" id="h_chart"></div></div>
-  <div class="card"><h2>Observations</h2><textarea id="h_notes" placeholder="Notes de la visite, remarques du client…"></textarea></div>
+  <div class="card"><h2>Observations</h2><textarea id="h_notes" class="obs" placeholder="Notes de la visite, remarques du client…"></textarea><button class="mini obsbtn" type="button" data-for="h_notes">Agrandir le cadre</button></div>
   <div class="card"><h2>Photos de l'essai</h2>
     <div class="photos">
       <label class="ph" for="h_ph1"><img id="h_im1" alt="Photo avant" hidden><span>Photo avant<small>housse actuelle</small></span></label>
@@ -369,8 +371,10 @@ select{appearance:auto}
     <label for="fi">CO₂ incinération en fin de vie (kg CO₂e/kg)</label><input id="fi" inputmode="decimal" value="2,71">
     <label for="fdv">Part du film recyclée après usage (%)</label><input id="fdv" inputmode="decimal" value="50">
     <label for="rep">Éco-contribution REP plastique (€/t)</label><input id="rep" inputmode="decimal" value="270">
+    <label for="fc">CO₂ fabrication carton des mandrins (kg CO₂e/kg)</label><input id="fc" inputmode="decimal" value="0,85">
+    <label for="repc">Éco-contribution REP papier-carton (€/t)</label><input id="repc" inputmode="decimal" value="35">
   </div>
-  <p class="note">Valeurs d'exemple reprises de vos tableaux Excel. Facteurs CO₂ : Agence européenne pour l'environnement (2021), hors extrusion du film et transport. Éco-contribution REP emballages professionnels à partir du 1er janvier 2027 : barèmes publiés entre 259 et 282 €/t HT selon l'éco-organisme, hors bonus et malus. Estimations à titre d'information, à ajuster selon vos sources.</p>
+  <p class="note">Valeurs d'exemple reprises de vos tableaux Excel. Facteurs CO₂ : Agence européenne pour l'environnement (2021), hors extrusion du film et transport. Éco-contribution REP emballages professionnels à partir du 1er janvier 2027 : barèmes publiés entre 259 et 282 €/t HT selon l'éco-organisme, hors bonus et malus. Mandrins : facteur carton Pro Carton (2024, 854 kg CO₂e par tonne, fabrication) ; REP papier-carton d'environ 35 €/t, ordre de grandeur du barème 2026, le barème 2027 restant à confirmer. Estimations à titre d'information, à ajuster selon vos sources.</p>
   <button class="btn ghost" id="reset">Remettre les valeurs d'exemple</button>
 </div>
 </section>
@@ -395,19 +399,20 @@ function show(v){
   document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===v));
   document.querySelectorAll('.view').forEach(s=>{s.hidden=s.id!=='v-'+v});
   try{localStorage.setItem(KEY+'-tab',v)}catch(e){}
-  requestAnimationFrame(()=>{if(SIG.f.size)SIG.f.size();if(SIG.h.size)SIG.h.size()});
+  requestAnimationFrame(()=>{if(SIG.f.size)SIG.f.size();if(SIG.h.size)SIG.h.size();if(typeof fitAllObs==='function')fitAllObs()});
   window.scrollTo(0,0);
 }
 
 /* ---- calculs (mêmes formules que les Excel) ---- */
 function calc(p){
   const D=num('dens'),pj=num(p+'_pj'),ja=num(p+'_ja'),an=pj*ja,clamp=x=>Math.min(Math.max(x,0),1);
-  const Fv=num('fv'),Fr=num('fr'),Fi=num('fi'),rec=clamp(num('fdv')/100),tarif=num('rep'),r={an,Fv,Fr,Fi,rec,tarif};
+  const Fv=num('fv'),Fr=num('fr'),Fi=num('fi'),rec=clamp(num('fdv')/100),tarif=num('rep'),Fc=num('fc'),tarifC=num('repc'),r={an,Fv,Fr,Fi,rec,tarif,Fc,tarifC};
   [1,2].forEach(n=>{
     const pb=num(p+'_pb'+n),m=num(p+'_m'+n),net=pb-m,e=num(p+'_e'+n),l=num(p+'_l'+n),kgIn=num(p+'_k'+n),surNet=$(p+'_kb'+n).value==='net',pr=kgIn*(surNet?net:pb),d=num(p+'_d'+n);
     const kgNet=pr/net,cons=d*an/1000,bob=cons/net,rc=clamp(num(p+'_rc'+n)/100),base=surNet?'net':'brut',fkg=rc*Fr+(1-rc)*Fv+(1-rec)*Fi;
     r[n]={e,pr,pb,d,net,len:net/(e*l*D)*1000,kgBrut:pr/pb,kgNet,base,cout:d/1000*kgNet,cons,bud:cons*kgNet,bob,palBob:net*1000/d,mand:bob*m,
-      rc,fkg,co2:cons*fkg,repAn:cons/1000*tarif,vir:cons*(1-rc)};
+      rc,fkg,vir:cons*(1-rc)};
+    const o=r[n];o.co2F=cons*fkg;o.co2M=o.mand*Fc;o.co2=o.co2F+o.co2M;o.repF=cons/1000*tarif;o.repM=o.mand/1000*tarifC;o.repAn=o.repF+o.repM;
   });
   const A=r[1],B=r[2];
   r.gPal=A.cout-B.cout; r.gBud=A.bud-B.bud; r.gKg=A.cons-B.cons; r.gCO2=A.co2-B.co2; r.pCO2=pct(r.gCO2,A.co2);
@@ -487,7 +492,8 @@ function render(){
     const A=r[1],B=r[2],obj=p==='f'?'film':'housse',ok=B.rc>=.35;
     $(p+'_env').innerHTML=
       tile(fmt(r.gCO2/1000,1)+' t','de CO₂e évitées par an, soit '+fmt(r.pCO2,1)+' % des émissions',true)+
-      tile(fmt(A.co2/1000,1)+' → '+fmt(B.co2/1000,1)+' t','de CO₂e par an pour le '+obj)+
+      tile(fmt(A.co2/1000,1)+' → '+fmt(B.co2/1000,1)+' t','de CO₂e par an pour le '+obj+' et ses mandrins')+
+      tile(fmt((A.co2M-B.co2M))+' kg','de CO₂e évités sur les mandrins carton')+
       tile(fmt(r.gVir)+' kg','de plastique vierge en moins par an')+
       tile(fmt(r.gRep)+' €','d\'éco-contribution REP en moins par an')+
       tile(fmt(r.gTot)+' €','d\'économie totale par an, '+obj+' et REP')+
@@ -524,7 +530,16 @@ function load(){try{const o=JSON.parse(localStorage.getItem(KEY)||'null');if(o)i
 inputs.forEach(i=>{i.addEventListener('input',()=>{render();save()});if(i.tagName==='SELECT'||i.type==='checkbox')i.addEventListener('change',()=>{render();save()})});
 $('reset').addEventListener('click',()=>{inputs.forEach(i=>{if(i.type==='checkbox')i.checked=false;else i.value=defaults[i.id]});setDates();render();save()});
 function setDates(){const t=new Date().toISOString().slice(0,10);['f_date','h_date'].forEach(id=>{if(!$(id).value)$(id).value=t})}
-load();setDates();render();
+/* ---- cadre Observations : s'adapte au texte, bouton pour l'agrandir ou le réduire ---- */
+function fitObs(el){const big=el.dataset.big==='1';el.style.height='auto';const h=el.scrollHeight+4;
+  el.style.height=(big?Math.max(h,Math.round(window.innerHeight*0.6)):Math.min(Math.max(h,120),220))+'px'}
+document.querySelectorAll('textarea.obs').forEach(el=>{el.addEventListener('input',()=>fitObs(el))});
+document.querySelectorAll('.obsbtn').forEach(b=>{const el=$(b.dataset.for);
+  const set=big=>{el.dataset.big=big?'1':'';b.textContent=big?'Réduire le cadre':'Agrandir le cadre';fitObs(el);try{localStorage.setItem(KEY+'-obs-'+el.id,big?'1':'')}catch(e){}};
+  b.addEventListener('click',()=>set(el.dataset.big!=='1'));
+  let big=false;try{big=localStorage.getItem(KEY+'-obs-'+el.id)==='1'}catch(e){}el.dataset.big=big?'1':'';b.textContent=big?'Réduire le cadre':'Agrandir le cadre'});
+const fitAllObs=()=>document.querySelectorAll('textarea.obs').forEach(fitObs);
+load();setDates();render();requestAnimationFrame(fitAllObs);
 try{const t=localStorage.getItem(KEY+'-tab');if(t)show(t)}catch(e){}
 
 /* ---- fiche PDF ---- */
@@ -691,7 +706,11 @@ function buildPdf(p){
   if(B.kgNet>A.kgNet&&r.gPal>0)y=PARA(doc,'Le '+mat+' KL Groupe coûte un peu plus cher au kilo, mais il en faut moins sur chaque palette : c\'est le coût par palette qui compte, et il baisse.',y)+4;
   const notes=$(p+'_notes').value.trim();
   if(notes){y=H2(doc,'Observations',y+2)+2;doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(...DARK);
-    const nl=doc.splitTextToSize(t(notes),W-2*M).slice(0,Math.max(2,Math.floor((256-y)/5)));doc.text(nl,M,y)}
+    let nl=doc.splitTextToSize(t(notes),W-2*M);const fit=Math.max(2,Math.floor((256-y)/5)),notesPage=doc.getNumberOfPages();
+    doc.text(nl.slice(0,fit),M,y);nl=nl.slice(fit);
+    while(nl.length){doc.addPage();header();let yy=H1(doc,'Observations (suite)');const n=Math.floor((276-yy)/5);
+      doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(...DARK);doc.text(nl.slice(0,n),M,yy);nl=nl.slice(n)}
+    doc.setPage(notesPage)}
   doc.setFontSize(8.5);doc.setTextColor(...GREY);
   doc.text(doc.splitTextToSize(t('Méthode : base de '+fmt(num(p+'_pj'))+' palettes par jour sur '+fmt(num(p+'_ja'))+' jours. Coût par palette = poids déposé x prix au kg net (hors mandrin). Densité retenue : '+fmt(num('dens'),2)+'.'),W-2*M),M,268);
 
@@ -763,7 +782,7 @@ function buildPdf(p){
   doc.addPage();header();
   const obj=H?'housse':'film';
   y=H1(doc,'Bilan environnemental et éco-contribution');
-  y=KPI(doc,y,[[fmt(r.gCO2/1000,1)+' t','de CO2e évitées par an ('+fmt(r.pCO2,1)+' %)'],[fmt(r.gRep)+' €','d\'éco-contribution REP en moins par an'],[fmt(r.gTot)+' €','d\'économie totale par an']])+10;
+  y=KPI(doc,y,[[fmt(r.gCO2/1000,1)+' t','de CO2e évitées par an ('+fmt(r.pCO2,1)+' %)'],[fmt(r.gRep)+' €','d\'éco-contribution REP en moins par an'],[fmt(r.gTot)+' €','d\'économie totale par an']])+8;
   AT(doc,{
     startY:y,margin:{left:M,right:M},theme:'grid',
     head:[['',L1,'KL Groupe','Écart']],
@@ -772,10 +791,14 @@ function buildPdf(p){
       row('Plastique consommé par an',A.cons,B.cons,'kg',0,fmt(-r.gKg)+' kg'),
       row('Dont plastique vierge',A.vir,B.vir,'kg',0,fmt(-r.gVir)+' kg'),
       row('Émissions par kg de '+obj,A.fkg,B.fkg,'kg CO2e',2),
-      row('Émissions annuelles',A.co2/1000,B.co2/1000,'t CO2e',1,fmt(-r.gCO2/1000,1)+' t'),
-      row('Éco-contribution REP par an',A.repAn,B.repAn,'€',0,fmt(-r.gRep)+' €'),
+      row('Émissions annuelles '+(H?'de la housse':'du film'),A.co2F/1000,B.co2F/1000,'t CO2e',2,fmt(-(A.co2F-B.co2F)/1000,2)+' t'),
+      row('Émissions annuelles des mandrins carton',A.co2M/1000,B.co2M/1000,'t CO2e',2,fmt(-(A.co2M-B.co2M)/1000,2)+' t'),
+      row('Émissions annuelles totales',A.co2/1000,B.co2/1000,'t CO2e',1,fmt(-r.gCO2/1000,1)+' t'),
+      row('Éco-contribution REP plastique',A.repF,B.repF,'€',0,fmt(-(A.repF-B.repF))+' €'),
+      row('Éco-contribution REP mandrins carton',A.repM,B.repM,'€',0,fmt(-(A.repM-B.repM))+' €'),
+      row('Éco-contribution REP totale par an',A.repAn,B.repAn,'€',0,fmt(-r.gRep)+' €'),
     ],
-    styles:{font:'helvetica',fontSize:10,textColor:DARK,lineColor:[217,226,218],cellPadding:2.4},
+    styles:{font:'helvetica',fontSize:9.6,textColor:DARK,lineColor:[217,226,218],cellPadding:{top:1.5,bottom:1.5,left:2.4,right:2.4}},
     headStyles:{fillColor:GREEN,textColor:255,fontStyle:'bold'},
     columnStyles:{0:{cellWidth:62},1:{halign:'right'},2:{halign:'right',fontStyle:'bold',textColor:GREEN},3:{halign:'right'}},
     alternateRowStyles:{fillColor:[246,250,246]}
@@ -794,9 +817,9 @@ function buildPdf(p){
     'La filière REP des emballages professionnels démarre le 1er janvier 2027. L\'éco-contribution est calculée sur le poids de plastique mis sur le marché : chaque kilo de '+obj+' en moins la réduit directement.');
   doc.setFontSize(8.5);doc.setTextColor(...GREY);
   const meth3='Facteurs retenus : fabrication du PE vierge '+fmt(r.Fv,2)+' et du PE recyclé '+fmt(r.Fr,2)+' kg CO2e/kg, incinération '+fmt(r.Fi,2)+' kg CO2e/kg (Agence européenne pour l\'environnement, 2021), '+
-    fmt(r.rec*100)+' % du '+obj+' recyclé après usage ; extrusion et transport non inclus. Éco-contribution : '+fmt(r.tarif)+' €/t, valeur indicative issue des barèmes 2027 publiés (259 à 282 €/t HT hors bonus et malus). '+
+    fmt(r.rec*100)+' % du '+obj+' recyclé après usage ; mandrins carton '+fmt(r.Fc,2)+' kg CO2e/kg (Pro Carton, 2024) et REP papier-carton '+fmt(r.tarifC)+' €/t (ordre de grandeur) ; extrusion et transport non inclus. Éco-contribution : '+fmt(r.tarif)+' €/t, valeur indicative issue des barèmes 2027 publiés (259 à 282 €/t HT hors bonus et malus). '+
     'Estimation à titre d\'information : elle ne remplace ni une analyse de cycle de vie ni la déclaration à l\'éco-organisme.';
-  doc.text(doc.splitTextToSize(t(meth3),W-2*M),M,Math.max(y,258));
+  {const ml=doc.splitTextToSize(t(meth3),W-2*M),h=ml.length*3.6;let yy=Math.max(y,262-h+14);if(yy+h>279){if(y+h<=279)yy=y;else{doc.addPage();header();yy=40}}doc.text(ml,M,yy)}
   footer(3);
 
   /* page 4 : projection */
@@ -908,7 +931,9 @@ function buildImpactPdf(p){
   AT(doc,Object.assign({startY:y,head:[['Résultats annuels','Actuel','KL Groupe','Écart']],body:[
     ['Plastique consommé',t(fmt(A.cons)+' kg'),t(fmt(B.cons)+' kg'),t(fmt(-r.gKg)+' kg ('+fmt(-r.pKg,1)+' %)')],
     ['Dont plastique vierge',t(fmt(A.vir)+' kg'),t(fmt(B.vir)+' kg'),t(fmt(-r.gVir)+' kg')],
+    ['Mandrins carton à évacuer',t(fmt(A.mand)+' kg'),t(fmt(B.mand)+' kg'),t(fmt(-r.gMand)+' kg')],
     ['Émissions de gaz à effet de serre',t(fmt(A.co2/1000,2)+' t CO2e'),t(fmt(B.co2/1000,2)+' t CO2e'),t(fmt(-r.gCO2/1000,2)+' t ('+fmt(-r.pCO2,1)+' %)')],
+    ['Dont mandrins carton',t(fmt(A.co2M)+' kg CO2e'),t(fmt(B.co2M)+' kg CO2e'),t(fmt(-(A.co2M-B.co2M))+' kg')],
     ['Éco-contribution REP (indicative)',t(fmt(A.repAn)+' €'),t(fmt(B.repAn)+' €'),t(fmt(-r.gRep)+' €')]]},tbl));
   y=doc.lastAutoTable.finalY+8;need(50);
   AT(doc,Object.assign({startY:y,head:[['Données d\'entrée','Actuel','KL Groupe','Origine']],body:[
@@ -920,12 +945,14 @@ function buildImpactPdf(p){
   para('Méthode',
     'Plastique consommé = poids déposé par palette x palettes par an. Émissions = plastique consommé x [part recyclée x facteur PE recyclé + part vierge x facteur PE vierge + part non recyclée après usage x facteur incinération]. '+
     'Facteurs retenus : fabrication du PE vierge '+fmt(r.Fv,2)+' kg CO2e/kg, fabrication du PE recyclé '+fmt(r.Fr,2)+' kg CO2e/kg, incinération '+fmt(r.Fi,2)+' kg CO2e/kg. '+
-    'Éco-contribution = plastique consommé x '+fmt(r.tarif)+' €/t.');
+    'Mandrins : poids de mandrin x bobines consommées par an, x '+fmt(r.Fc,2)+' kg CO2e/kg de carton fabriqué. '+
+    'Éco-contribution = plastique consommé x '+fmt(r.tarif)+' €/t + mandrins x '+fmt(r.tarifC)+' €/t.');
   para('Sources',
     'Facteurs d\'émission : Agence européenne pour l\'environnement, ETC/WMGE, « Greenhouse gas emissions and natural capital implications of plastics (including biobased plastics) », 2021. '+
-    'Éco-contribution : barèmes 2027 publiés par les éco-organismes de la REP emballages professionnels (Citeo Pro, Léko Pro, Twiice), de 259 à 282 €/t HT hors bonus et malus ; filière en vigueur au 1er janvier 2027.',9.5);
+    'Carton des mandrins : Pro Carton, « The carbon footprint of carton packaging », 2025 (854 kg CO2e par tonne, données 2024, fabrication). '+
+    'Éco-contribution : barèmes 2027 publiés par les éco-organismes de la REP emballages professionnels (Citeo Pro, Léko Pro, Twiice), de 259 à 282 €/t HT hors bonus et malus pour le plastique ; environ 35 €/t pour le papier-carton (ordre de grandeur du barème 2026) ; filière en vigueur au 1er janvier 2027.',9.5);
   para('Périmètre et limites',
-    'Inclus : fabrication de la matière plastique (vierge et recyclée) et fin de vie par incinération de la part non recyclée. Exclus : extrusion du film, transport, mandrins, emballage des bobines et machine. '+
+    'Inclus : fabrication de la matière plastique (vierge et recyclée), fin de vie par incinération de la part non recyclée et fabrication du carton des mandrins. Exclus : extrusion du film, transport, fin de vie des mandrins, emballage des bobines et machine. '+
     'Ce document est une estimation établie par KL Groupe à partir des mesures de l\'essai. Il ne constitue ni une attestation certifiée, ni une analyse de cycle de vie conforme aux normes ISO 14040 et 14044, ni une vérification par un organisme tiers.',9.5);
   if(SIG[p].has){need(60);y=drawSig(doc,y,p,A,B,dt)}
   need(14);doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(...DARK);
@@ -1214,7 +1241,7 @@ function resume(p){
   const r=calc(p),A=r[1],B=r[2];
   return {gBud:r.gBud,gPal:r.gPal,pBud:r.pBud,gKg:r.gKg,pKg:r.pKg,gCO2:r.gCO2,gRep:r.gRep,gTot:r.gTot,dA:A.d,dB:B.d,coutA:A.cout,coutB:B.cout,consA:A.cons,consB:B.cons,an:r.an};
 }
-function snapshotInputs(p){const o={};inputs.forEach(i=>{if(i.id.startsWith(p+'_')||['dens','fv','fr','fi','fdv','rep'].includes(i.id))o[i.id]=i.value});return o}
+function snapshotInputs(p){const o={};inputs.forEach(i=>{if(i.id.startsWith(p+'_')||['dens','fv','fr','fi','fdv','rep','fc','repc'].includes(i.id))o[i.id]=i.value});return o}
 async function saveEssai(p){
   const msg=$(p+'_msg'),cli=$(p+'_cli').value.trim();
   if(!cli){msg.textContent='Indiquez le nom du client avant d\'enregistrer l\'essai.';return}
@@ -1316,7 +1343,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-161000';
+window.APP_VERSION='20261125-173000';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
