@@ -537,7 +537,7 @@ else downloads={async save({filename,data}){ /* hors de Claude : feuille de part
   /* iPhone et iPad : feuille de partage (« Enregistrer dans Fichiers »). Mac : téléchargement direct, la feuille de partage du Mac ne propose pas d'enregistrer */
   const tactile=navigator.maxTouchPoints>1||/iPhone|iPad|iPod|Android/.test(navigator.userAgent);
   if(tactile&&navigator.canShare&&navigator.canShare({files:[file]})){
-    try{await navigator.share({files:[file],title:filename});return {status:'saved'}}
+    try{await navigator.share({files:[file]});return {status:'saved'}}
     catch(e){if(e&&e.name==='AbortError')throw {code:'declined'}}}
   const url=URL.createObjectURL(file),a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
   setTimeout(()=>URL.revokeObjectURL(url),60000);return {status:'saved'}}};
@@ -1316,7 +1316,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-160000';
+window.APP_VERSION='20261125-161000';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
