@@ -171,6 +171,16 @@ select{appearance:auto}
     <label for="f_pj">Palettes par jour</label><input id="f_pj" inputmode="decimal" value="1200">
     <label for="f_ja">Jours travaillés par an</label><input id="f_ja" inputmode="decimal" value="220">
   </div></div>
+  <div class="card"><h2>Humain et performance</h2><div class="grid">
+    <span></span><span class="colh">Actuel</span><span class="colh kl">KL Groupe</span>
+    <label>Casses de film par bobine</label><input id="f_ca1" inputmode="decimal" placeholder="à compter"><input id="f_ca2" inputmode="decimal" placeholder="à compter">
+    <label>Tenue des palettes</label><select id="f_tq1" aria-label="Tenue actuelle"><option value="">-</option><option>Insuffisante</option><option>Correcte</option><option>Bonne</option></select><select id="f_tq2" aria-label="Tenue KL Groupe"><option value="">-</option><option>Insuffisante</option><option>Correcte</option><option>Bonne</option></select>
+  </div><div class="grid two">
+    <label for="f_tc">Durée d'un changement de bobine ou d'une intervention (min)</label><input id="f_tc" inputmode="decimal" value="2">
+    <label for="f_inc">Incidents qualité par an (facultatif)</label><input id="f_inc" inputmode="decimal" placeholder="si connu">
+    <label for="f_inct">Temps de traitement par incident (h)</label><input id="f_inct" inputmode="decimal" placeholder="si connu">
+  </div><p class="note">Casses : comptez les interventions pour relancer le film pendant l'essai. Sans valeur côté KL Groupe, la fiche montre seulement le coût actuel des casses, sans promettre de gain. Incidents : coût estimé, jamais présenté comme une économie.</p><div class="tiles" id="f_hum"></div></div>
+
   <div class="card"><h2>Résultats</h2><div class="tiles" id="f_res"></div></div>
   <div class="card"><h2>Environnement et REP</h2><div class="grid">
     <span></span><span class="colh">Actuel</span><span class="colh kl">KL Groupe</span>
@@ -226,6 +236,15 @@ select{appearance:auto}
     <label for="h_pj">Palettes par jour</label><input id="h_pj" inputmode="decimal" value="174">
     <label for="h_ja">Jours travaillés par an</label><input id="h_ja" inputmode="decimal" value="220">
   </div></div>
+  <div class="card"><h2>Humain et performance</h2><div class="grid">
+    <span></span><span class="colh">Actuel</span><span class="colh kl">KL Groupe</span>
+    <label>Tenue des palettes</label><select id="h_tq1" aria-label="Tenue actuelle"><option value="">-</option><option>Insuffisante</option><option>Correcte</option><option>Bonne</option></select><select id="h_tq2" aria-label="Tenue KL Groupe"><option value="">-</option><option>Insuffisante</option><option>Correcte</option><option>Bonne</option></select>
+  </div><div class="grid two">
+    <label for="h_tc">Durée d'un changement de bobine ou d'une intervention (min)</label><input id="h_tc" inputmode="decimal" value="2">
+    <label for="h_inc">Incidents qualité par an (facultatif)</label><input id="h_inc" inputmode="decimal" placeholder="si connu">
+    <label for="h_inct">Temps de traitement par incident (h)</label><input id="h_inct" inputmode="decimal" placeholder="si connu">
+  </div><p class="note">Casses : comptez les interventions pour relancer le housse pendant l'essai. Sans valeur côté KL Groupe, la fiche montre seulement le coût actuel des casses, sans promettre de gain. Incidents : coût estimé, jamais présenté comme une économie.</p><div class="tiles" id="h_hum"></div></div>
+
   <div class="card"><h2>Résultats</h2><div class="tiles" id="h_res"></div></div>
   <div class="card"><h2>Environnement et REP</h2><div class="grid">
     <span></span><span class="colh">Actuel</span><span class="colh kl">KL Groupe</span>
@@ -373,6 +392,8 @@ select{appearance:auto}
     <label for="rep">Éco-contribution REP plastique (€/t)</label><input id="rep" inputmode="decimal" value="270">
     <label for="fc">CO₂ fabrication carton des mandrins (kg CO₂e/kg)</label><input id="fc" inputmode="decimal" value="0,85">
     <label for="repc">Éco-contribution REP papier-carton (€/t)</label><input id="repc" inputmode="decimal" value="35">
+    <label for="cho">Coût horaire d'un intervenant, chargé (€/h)</label><input id="cho" inputmode="decimal" value="35">
+    <label for="chq">Coût horaire de traitement d'un incident qualité (€/h)</label><input id="chq" inputmode="decimal" value="50">
   </div>
   <p class="note">Valeurs d'exemple reprises de vos tableaux Excel. Facteurs CO₂ : Agence européenne pour l'environnement (2021), hors extrusion du film et transport. Éco-contribution REP emballages professionnels à partir du 1er janvier 2027 : barèmes publiés entre 259 et 282 €/t HT selon l'éco-organisme, hors bonus et malus. Mandrins : facteur carton Pro Carton (2024, 854 kg CO₂e par tonne, fabrication) ; REP papier-carton d'environ 35 €/t, ordre de grandeur du barème 2026, le barème 2027 restant à confirmer. Estimations à titre d'information, à ajuster selon vos sources.</p>
   <button class="btn ghost" id="reset">Remettre les valeurs d'exemple</button>
@@ -419,6 +440,16 @@ function calc(p){
   r.gRep=A.repAn-B.repAn; r.gTot=r.gBud+r.gRep; r.gVir=A.vir-B.vir;
   r.gBob=A.bob-B.bob; r.gMand=A.mand-B.mand;
   r.pBud=pct(r.gBud,A.bud); r.pKg=pct(r.gKg,A.cons);
+  /* humain et performance : changements de bobine, casses, manutention, incidents */
+  const has=id=>{const el=$(id);return !!el&&String(el.value).trim()!==''};
+  const tc=num(p+'_tc'),ch=num('cho');r.tc=tc;r.ch=ch;
+  r.casA=has(p+'_ca1');r.casB=has(p+'_ca2');r.casGain=r.casA&&r.casB;
+  [[A,1],[B,2]].forEach(([o,n])=>{o.ca=has(p+'_ca'+n)?num(p+'_ca'+n):0;o.casN=o.bob*o.ca;o.casPal=o.palBob>0?o.ca/o.palBob:NaN;o.kgManip=o.bob*o.pb;o.tq=($(p+'_tq'+n)||{}).value||''});
+  A.interv=A.bob+(r.casGain?A.casN:0);B.interv=B.bob+(r.casGain?B.casN:0);
+  r.gInterv=A.interv-B.interv;r.gHeures=r.gInterv*tc/60;r.gHeuresEur=r.gHeures*ch;
+  r.casHeuresA=r.casA?A.casN*tc/60:0;r.casEurA=r.casHeuresA*ch;
+  r.gManip=A.kgManip-B.kgManip;
+  r.incN=num(p+'_inc');r.incT=num(p+'_inct');r.incEur=r.incN*r.incT*num('chq');r.hasInc=r.incN>0&&r.incT>0;
   return r;
 }
 function projRows(gBud,gRep,g,inv,loy,months,maintAn){
@@ -489,6 +520,14 @@ function render(){
       tile(fmt(r.gBob),'changements de bobine en moins par an')+
       tile(fmt(r[1].cout,3)+' → '+fmt(r[2].cout,3)+' €','coût de '+(p==='f'?'film':'housse')+' par palette')+
       tile(fmt(r.gMand)+' kg','de mandrins à évacuer en moins');
+    $(p+'_hum').innerHTML=
+      tile(fmt(r.gHeures,Math.abs(r.gHeures)<10?1:0)+' h','d\'intervention libérées par an (bobines'+(r.casGain?' et casses':'')+')',true)+
+      tile(fmt(r.gInterv),'interventions en moins par an')+
+      tile(fmt(r.gHeuresEur)+' €','valeur estimée du temps libéré, à '+fmt(r.ch)+' €/h')+
+      tile(fmt(r.gManip/1000,1)+' t','de bobines manipulées en moins par an')+
+      (r.casA?tile(fmt(r[1].casN)+' casses','par an aujourd\'hui, soit '+fmt(r.casHeuresA)+' h et '+fmt(r.casEurA)+' €'):'')+
+      (r.casA&&isFinite(r[1].casPal)&&r[1].casPal>0?tile('1 palette sur '+fmt(1/r[1].casPal),'demande une intervention aujourd\'hui'):'')+
+      (r.hasInc?tile(fmt(r.incEur)+' €','coût actuel estimé des incidents qualité par an'):'');
     const A=r[1],B=r[2],obj=p==='f'?'film':'housse',ok=B.rc>=.35;
     $(p+'_env').innerHTML=
       tile(fmt(r.gCO2/1000,1)+' t','de CO₂e évitées par an, soit '+fmt(r.pCO2,1)+' % des émissions',true)+
@@ -667,20 +706,52 @@ function buildPdf(p){
   const row=(lab,a,b,u,d=0,g)=>[t(lab),t(fmt(a,d)+(u?' '+u:'')),t(fmt(b,d)+(u?' '+u:'')),g==null?'':t(g)];
   const sg=(v,d=0,u='')=>(v>0?'+':'')+fmt(v,d)+(u?' '+u:'');
 
-  /* page 1 : synthèse */
-  coverHead(doc,cli,'ÉTUDE D\'OPTIMISATION  |  AUDIT OPTIM\'PACK');
+  /* page 1 : synthèse en quatre piliers */
+  coverHead(doc,cli,'AUDIT OPTIM\'PACK  |  PERFORMANCE DU CONDITIONNEMENT');
   let y=coverTitle(doc,TT,60);
   y=infoRow(doc,y,[['Interlocuteur',intr],['Fonction',fct],['Date de l\'essai',dt],['Volume',fmt(r.an)+' palettes / an']]);
-  y=PARA(doc,'Cette étude compare, à partir d\'un essai réalisé sur votre site, votre '+(H?'housse actuelle':'film actuel')+' à la solution proposée par KL Groupe. Elle mesure l\'effet du changement sur votre budget, la quantité de plastique consommée, la productivité de vos lignes, votre empreinte carbone et votre éco-contribution REP.',y)+5;
-  y=H2(doc,'Ce que le changement vous apporte chaque année',y);
-  y=KPI(doc,y,[[fmt(r.gBud)+' €','d\'économie sur le '+mat+' ('+fmt(r.pBud,1)+' %)'],[fmt(r.gKg)+' kg','de plastique en moins ('+fmt(r.pKg,1)+' %)'],[fmt(r.gCO2/1000,1)+' t','de CO2e évitées']])+12;
+  y=PARA(doc,'Cet audit ne cherche pas seulement à réduire votre consommation de '+mat+'. Il mesure l\'effet du changement sur l\'ensemble de votre conditionnement : le coût, le temps de vos équipes, l\'impact environnemental et la tenue de vos palettes. Chaque résultat indique son niveau de preuve.',y,10)+3;
+  const pill=(txt,x,yy)=>{doc.setFont('helvetica','bold');doc.setFontSize(6.3);const w=doc.getTextWidth(txt)+3;doc.setFillColor(...SOFT);doc.setDrawColor(...SUBC);doc.setLineWidth(.2);doc.roundedRect(x,yy-2.9,w,3.9,1,1,'FD');doc.setTextColor(...GREY);doc.text(txt,x+1.5,yy);return w};
+  const pillar=(x,yy,w,h,title,big,bigLab,bigTag,lines)=>{
+    doc.setFillColor(...SOFT);doc.roundedRect(x,yy,w,h,2.5,2.5,'F');doc.setFillColor(...GREEN);doc.rect(x,yy,w,1.3,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...NUIT);doc.text(t(title),x+4,yy+7);
+    doc.setTextColor(...GREEN);fitSize(doc,t(big),w-8,19,11);doc.text(t(big),x+4,yy+16.5);
+    doc.setFont('helvetica','normal');doc.setFontSize(8.6);doc.setTextColor(...DARK);const bl=t(bigLab);doc.text(bl,x+4,yy+21.5);
+    pill(bigTag,x+5+doc.getTextWidth(bl),yy+21.5);
+    let ly=yy+28;lines.filter(Boolean).forEach(([txt,tag])=>{doc.setFont('helvetica','normal');doc.setFontSize(8.6);doc.setTextColor(...DARK);
+      const l=doc.splitTextToSize(t(txt),w-24)[0];doc.text(l,x+4,ly);pill(tag,x+6+doc.getTextWidth(l),ly);ly+=5.2});
+  };
+  const gx=16,gw=(178-6)/2,gh=50;
+  const tq=(o)=>o.tq?o.tq.toLowerCase():'';
+  pillar(gx,y,gw,gh,'ÉCONOMIE',fmt(r.gBud)+' € / an','d\'économie sur le '+mat+' ('+fmt(r.pBud,1)+' %)','CALCULÉ',[
+    [fmt(r.gPal,3)+' € gagnés par palette','CALCULÉ'],
+    [fmt(A.d)+' g > '+fmt(B.d)+' g de '+mat+' par palette','MESURÉ'],
+    [fmt(r.gRep)+' € d\'éco-contribution REP en moins','ESTIMÉ']]);
+  pillar(gx+gw+6,y,gw,gh,'ENVIRONNEMENT',fmt(r.gKg)+' kg / an','de plastique en moins ('+fmt(r.pKg,1)+' %)','CALCULÉ',[
+    [fmt(r.gCO2/1000,1)+' t de CO2e évitées par an','ESTIMÉ'],
+    [fmt(r.gMand)+' kg de mandrins en moins par an','CALCULÉ'],
+    [fmt(B.rc*100)+' % de recyclé (objectif PPWR 35 %)','FICHE PRODUIT']]);
+  const y2=y+gh+6;
+  pillar(gx,y2,gw,gh,'HUMAIN',fmt(r.gHeures,Math.abs(r.gHeures)<10?1:0)+' h / an','d\'intervention libérées','CALCULÉ',[
+    [fmt(r.gInterv)+' interventions en moins par an','CALCULÉ'],
+    [fmt(r.gManip/1000,1)+' t de bobines manipulées en moins','CALCULÉ'],
+    [fmt(r.gHeuresEur)+' € de temps libéré, à '+fmt(r.ch)+' €/h','ESTIMÉ']]);
+  const perfLines=[
+    [fmt(A.palBob)+' > '+fmt(B.palBob)+' palettes par bobine','CALCULÉ'],
+    r.casA?(r.casGain?[fmt(A.ca,1)+' > '+fmt(B.ca,1)+' casses de film par bobine','MESURÉ']:[fmt(A.ca,1)+' casses/bobine : '+fmt(r.casEurA)+' €/an','MESURÉ']):null,
+    (A.tq||B.tq)?['Tenue des palettes : '+(tq(A)||'-')+' > '+(tq(B)||'-'),'QUALITATIF']:null,
+    r.hasInc?['Incidents qualité : '+fmt(r.incEur)+' € par an aujourd\'hui','ESTIMÉ']:null].filter(Boolean).slice(0,3);
+  const casBig=r.casA&&isFinite(A.casPal)&&A.casPal>0;
+  pillar(gx+gw+6,y2,gw,gh,'PERFORMANCE',casBig?'1 palette sur '+fmt(1/A.casPal):fmt(B.palBob-A.palBob,0)+' palettes',casBig?'demande une intervention aujourd\'hui':'de plus par bobine',casBig?'MESURÉ':'CALCULÉ',
+    casBig?perfLines:perfLines.slice(1).length?perfLines.slice(1):[['Tenue de palette visée identique','QUALITATIF']]);
+  y=y2+gh+5;
+  doc.setFont('helvetica','normal');doc.setFontSize(7.6);doc.setTextColor(...GREY);
+  doc.text(doc.splitTextToSize(t('Mesuré : constaté pendant l\'essai. Calculé : obtenu à partir des mesures et de vos données. Estimé : repose sur une hypothèse ou une valeur moyenne à confirmer. Qualitatif : appréciation non chiffrée.'),178),16,y);y+=10;
   y=H2(doc,'La solution proposée',y)+2;
-  [[L1,A,NUIT],['KL Groupe',B,GREEN]].forEach(([l,o,c])=>{doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...c);doc.text(t(l),16,y);
-    doc.setFont('helvetica','normal');doc.setTextColor(...DARK);doc.text(t(fmt(o.e)+' µ, bobine de '+fmt(o.pb,2)+' kg, '+fmt(o.d)+' g déposés par palette'),56,y);y+=7});
-  y+=7;y=H2(doc,'Ce que ça change au quotidien',y)+2;
-  y=PARA(doc,'Moins de bobines à changer ('+fmt(r.gBob)+' par an), c\'est moins d\'arrêts de ligne et plus de temps de production. Moins de commandes et de stock à gérer, '+fmt(r.gMand)+' kg de mandrins et '+fmt(r.gKg)+' kg de plastique en moins à évacuer chaque année, pour une palette qui garde la même tenue.',y)+8;
-  y=H2(doc,'Prochaine étape',y)+2;
-  PARA(doc,'Valider ensemble la solution retenue, puis organiser sa mise en place sur vos lignes avec un point de contrôle des gains.',y);
+  [[L1,A,NUIT],['KL Groupe',B,GREEN]].forEach(([l,o,c])=>{doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...c);doc.text(t(l),16,y);
+    doc.setFont('helvetica','normal');doc.setTextColor(...DARK);doc.text(t(fmt(o.e)+' µ, bobine de '+fmt(o.pb,2)+' kg, '+fmt(o.d)+' g déposés par palette'),56,y);y+=6});
+  y+=4;y=H2(doc,'Prochaine étape',y)+2;
+  PARA(doc,'Valider ensemble la solution retenue, puis organiser sa mise en place sur vos lignes avec un point de contrôle des gains.',y,10);
 
   /* page 2 : résultats détaillés */
   doc.addPage();header();y=H1(doc,'Résultats de l\'essai');
@@ -699,7 +770,10 @@ function buildPdf(p){
       row('Budget annuel',A.bud,B.bud,'€',0,sg(-r.gBud,0,'€')),
       row('Bobines consommées par an',A.bob,B.bob,'',0,sg(-r.gBob)),
       row('Palettes par bobine',A.palBob,B.palBob,'',0,sg(B.palBob-A.palBob)),
-      row('Mandrins à évacuer par an',A.mand,B.mand,'kg',0,sg(-r.gMand,0,'kg'))]});
+      row('Mandrins à évacuer par an',A.mand,B.mand,'kg',0,sg(-r.gMand,0,'kg'))].concat(
+      r.casA?[[t('Casses de film par bobine'),t(fmt(A.ca,1)),r.casB?t(fmt(B.ca,1)):'-',r.casB?t(sg(B.ca-A.ca,1)):'']]:[],
+      [row('Interventions par an (bobines'+(r.casGain?' et casses':'')+')',A.interv,B.interv,'',0,sg(-r.gInterv)),
+       row('Heures d\'intervention par an',A.interv*r.tc/60,B.interv*r.tc/60,'h',0,sg(-r.gHeures,0,'h'))])});
   y=doc.lastAutoTable.finalY+12;
   y=H2(doc,'Par palette',y);
   y=KPI(doc,y,[[sg(B.d-A.d,0,'g'),'de '+mat+' déposé'],[fmt(r.gPal,3)+' €','gagnés par palette'],[sg(B.palBob-A.palBob),'palettes par bobine']],28,18)+10;
@@ -1182,8 +1256,8 @@ $('a_new').addEventListener('click',e=>{const b=e.currentTarget;
   if(b.dataset.c!=='1'){b.dataset.c='1';b.textContent='Confirmer : vider l\'audit, l\'onglet Film et le contrôle';return}
   b.dataset.c='';b.textContent='Commencer un nouvel audit';const src=AUD.src;AUD=freshAudit();AUD.src=src;
   /* onglet Film : tout vide sauf la bobine KL Groupe type et les jours travaillés */
-  const KEEP={f_pb2:'17,5',f_m2:'1',f_l2:'0,5',f_ja:'220'};
-  inputs.forEach(i=>{if(!i.id.startsWith('f_'))return;if(i.tagName==='SELECT'){i.value='brut';return}i.value=KEEP[i.id]!=null?KEEP[i.id]:''});
+  const KEEP={f_pb2:'17,5',f_m2:'1',f_l2:'0,5',f_ja:'220',f_tc:'2'};
+  inputs.forEach(i=>{if(!i.id.startsWith('f_'))return;if(i.tagName==='SELECT'){i.value=/^f_kb/.test(i.id)?'brut':'';return}i.value=KEEP[i.id]!=null?KEEP[i.id]:''});
   PH.f[1]=null;PH.f[2]=null;showPh('f',1);showPh('f',2);
   {const st=SIG.f,c=$('f_sig');if(st.size)st.size();c.getContext('2d').clearRect(0,0,c.width,c.height);st.has=false}
   /* onglet Contrôle : tout vide sauf la palette 0,8 x 1,2 */
@@ -1241,7 +1315,7 @@ function resume(p){
   const r=calc(p),A=r[1],B=r[2];
   return {gBud:r.gBud,gPal:r.gPal,pBud:r.pBud,gKg:r.gKg,pKg:r.pKg,gCO2:r.gCO2,gRep:r.gRep,gTot:r.gTot,dA:A.d,dB:B.d,coutA:A.cout,coutB:B.cout,consA:A.cons,consB:B.cons,an:r.an};
 }
-function snapshotInputs(p){const o={};inputs.forEach(i=>{if(i.id.startsWith(p+'_')||['dens','fv','fr','fi','fdv','rep','fc','repc'].includes(i.id))o[i.id]=i.value});return o}
+function snapshotInputs(p){const o={};inputs.forEach(i=>{if(i.id.startsWith(p+'_')||['dens','fv','fr','fi','fdv','rep','fc','repc','cho','chq'].includes(i.id))o[i.id]=i.value});return o}
 async function saveEssai(p){
   const msg=$(p+'_msg'),cli=$(p+'_cli').value.trim();
   if(!cli){msg.textContent='Indiquez le nom du client avant d\'enregistrer l\'essai.';return}
@@ -1343,7 +1417,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-174500';
+window.APP_VERSION='20261125-181500';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
