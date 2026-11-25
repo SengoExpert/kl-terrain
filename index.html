@@ -639,16 +639,47 @@ function pageHead(doc,cli,title){
   doc.setTextColor(...SUBC);doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.text(doc.splitTextToSize(t(title),W-2*M-46)[0],W-M,18.5,{align:'right'});
 }
 function H1(doc,txt,y=42){doc.setTextColor(...NUIT);doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text(t(txt),16,y);doc.setFillColor(...GREEN);doc.rect(16,y+3,18,1.2,'F');return y+13}
-function H2(doc,txt,y){doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(...NUIT);doc.text(t(txt),16,y);return y+5}
-function PARA(doc,txt,y,size=10.5){doc.setFont('helvetica','normal');doc.setFontSize(size);doc.setTextColor(...DARK);const l=doc.splitTextToSize(t(txt),178);doc.text(l,16,y);return y+l.length*size*.47+4}
-function KPI(doc,y,items,hh=32,fs=21){
+/* ---- mise en page adaptative : 1er passage pour mesurer le vide en bas de chaque page, 2e passage qui répartit ce vide entre les blocs ---- */
+let LAY=null;
+const pgOf=doc=>doc.internal.getCurrentPageInfo().pageNumber;
+function sp(doc){if(!LAY||LAY.doc!==doc)return 0;const p=pgOf(doc);LAY.gaps[p]=(LAY.gaps[p]||0)+1;LAY.seq.push(p);return LAY.extra[p]||0}
+/* élément extensible (photos, graphique) : peut grandir jusqu'à max mm s'il reste de la place sur la page */
+function el(doc,max){if(!LAY||LAY.doc!==doc)return 0;const p=pgOf(doc);LAY.el[p]=(LAY.el[p]||0)+max;LAY.seq.push(p);return (LAY.elf[p]||0)*max}
+function layDoc(){const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'});if(!LAY)return doc;LAY.doc=doc;
+  const rec=(top,bot)=>{const p=pgOf(doc);if(LAY.anchor)LAY.anc[p]=Math.min(LAY.anc[p]==null?999:LAY.anc[p],top);else LAY.bot[p]=Math.max(LAY.bot[p]||0,bot)};
+  const wrap=(n,f)=>{const o=doc[n];if(typeof o!=='function')return;doc[n]=function(...a){try{const b=f(a);if(b)rec(b[0],b[1])}catch(e){}return o.apply(doc,a)}};
+  wrap('text',a=>{const tx=a[0],y=a[2];if(typeof y!=='number')return null;const n=Array.isArray(tx)?tx.length:String(tx).split('\n').length,fs=doc.getFontSize()*0.3528,lh=(a[3]&&a[3].lineHeightFactor)||1.15;return [y-fs,y+(n-1)*fs*lh+0.8]});
+  wrap('rect',a=>[a[1],a[1]+a[3]]);wrap('roundedRect',a=>[a[1],a[1]+a[3]]);
+  wrap('addImage',a=>typeof a[3]==='number'?[a[3],a[3]+a[5]]:null);
+  wrap('line',a=>[Math.min(a[1],a[3]),Math.max(a[1],a[3])]);wrap('circle',a=>[a[1]-a[2],a[1]+a[2]]);
+  return doc}
+function anchored(doc,fn){if(LAY&&LAY.doc===doc){LAY.anchor=true;try{fn()}finally{LAY.anchor=false}}else fn()}
+function adaptive(build){
+  const fresh=(extra,elf)=>({extra,elf,el:{},gaps:{},bot:{},anc:{},seq:[],anchor:false});
+  LAY=fresh({},{});let a;
+  try{a=build()}catch(e){LAY=null;throw e}
+  const L1=LAY,N=a.doc.getNumberOfPages(),seq1=L1.seq.join(','),extra={},elf={};
+  for(let p=1;p<=N;p++){const g=L1.gaps[p]||0,E=L1.el[p]||0;if(!g&&!E)continue;const lim=Math.min((L1.anc[p]==null?999:L1.anc[p])-5,272),slack=lim-(L1.bot[p]||0);
+    if(slack<=8)continue;const avail=slack*0.85,elUse=Math.min(E,avail*0.6);if(E)elf[p]=elUse/E;if(g)extra[p]=Math.min(9,(avail-elUse)/g)}
+  /* 2e passage : on garde la version aérée seulement si chaque bloc reste sur la même page ; sinon on réduit l'aération */
+  for(const k of [1,0.6,0.3]){
+    const ex={},ef={};Object.keys(extra).forEach(p=>ex[p]=extra[p]*k);Object.keys(elf).forEach(p=>ef[p]=elf[p]*k);
+    LAY=fresh(ex,ef);let b=null;
+    try{b=build()}catch(e){b=null}
+    const ok=b&&b.doc.getNumberOfPages()===N&&LAY.seq.join(',')===seq1;
+    if(ok){LAY=null;return b}
+  }
+  LAY=null;return a}
+function H2(doc,txt,y){y+=sp(doc);doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(...NUIT);doc.text(t(txt),16,y);return y+5}
+function PARA(doc,txt,y,size=10.5){y+=sp(doc);doc.setFont('helvetica','normal');doc.setFontSize(size);doc.setTextColor(...DARK);const l=doc.splitTextToSize(t(txt),178);doc.text(l,16,y);return y+l.length*size*.47+4}
+function KPI(doc,y,items,hh=32,fs=21){y+=sp(doc);
   const W=210,M=16,g=5,w=(W-2*M-2*g)/3;
   items.forEach(([v,l],i)=>{const x=M+i*(w+g);doc.setFillColor(...SOFT);doc.roundedRect(x,y,w,hh,2.5,2.5,'F');doc.setFillColor(...GREEN);doc.rect(x,y,w,1.3,'F');
     doc.setTextColor(...GREEN);doc.setFont('helvetica','bold');fitSize(doc,t(v),w-6,fs,11);doc.text(t(v),x+w/2,y+hh*.47,{align:'center'});
     doc.setTextColor(...DARK);doc.setFont('helvetica','normal');doc.setFontSize(9.3);doc.text(doc.splitTextToSize(t(l),w-8),x+w/2,y+hh*.72,{align:'center'})});
   return y+hh;
 }
-function AT(doc,o){
+function AT(doc,o){if(o&&typeof o.startY==='number')o=Object.assign({},o,{startY:o.startY+sp(doc)});
   const hd=o.head&&o.head[0],cmp=!!(hd&&hd.some(h=>String(h)==='Écart'));
   const st=Object.assign({font:'helvetica',fontSize:9.8,textColor:DARK,cellPadding:{top:2.5,bottom:2.5,left:2.5,right:2.5}},o.styles||{},{lineColor:LINEC,lineWidth:{bottom:.3}});
   const hs=Object.assign({},o.headStyles||{},{fillColor:NUIT,textColor:255,fontStyle:'bold',lineWidth:0});
@@ -659,7 +690,7 @@ function AT(doc,o){
     if(prev)prev(d)}}));
 }
 function footAll(doc){
-  const W=210,M=16,N=doc.getNumberOfPages();
+  const W=210,M=16,N=doc.getNumberOfPages();if(LAY&&LAY.doc===doc)LAY.anchor=true;
   for(let i=1;i<=N;i++){doc.setPage(i);
     doc.setDrawColor(...NUIT);doc.setLineWidth(.4);doc.line(M,282,W-M,282);
     doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...GREY);
@@ -671,7 +702,7 @@ function fitImg(doc,ph,x,y,bw,bh){
   doc.addImage(ph.src,ph.src.startsWith('data:image/png')?'PNG':'JPEG',x+(bw-w)/2,y+(bh-h)/2,w,h);
 }
 function drawPhotos(doc,y,p,A,B,ratio=0.78){
-  const M=16,g=6,bw=(210-2*M-g)/2,bh=bw*ratio,H=p==='h';
+  const M=16,g=6,bw=(210-2*M-g)/2,bh=bw*ratio+el(doc,40),H=p==='h';
   [[1,'Avant : '+(H?'housse actuelle':'film actuel'),A],[2,'Après : solution KL Groupe',B]].forEach(([n,lab,o],i)=>{
     const x=M+i*(bw+g);doc.setFillColor(246,250,246);doc.roundedRect(x,y,bw,bh,2,2,'F');
     const ph=phFor(p,n);if(ph)fitImg(doc,ph,x,y,bw,bh);
@@ -713,10 +744,10 @@ function photoGrid(doc,y,list,newPage){
 }
 
 function needData(p){const r=calc(p);if(!(r[1].d>0&&r[2].d>0&&r.an>0))throw new Error('renseignez d\'abord les poids déposés (actuel et KL Groupe) et les palettes par jour')}
-function buildPdf(p){
+function buildPdf(p){needData(p);return adaptive(()=>buildPdfCore(p))}
+function buildPdfCore(p){
   const H=p==='h',r=calc(p),A=r[1],B=r[2];
-  needData(p);
-  const {jsPDF}=window.jspdf, doc=new jsPDF({unit:'mm',format:'a4'}), W=210, M=16;
+  const doc=layDoc(), W=210, M=16;
   const cli=$(p+'_cli').value.trim()||'Client', intr=$(p+'_int').value.trim(), fct=$(p+'_fct').value.trim();
   const dv=$(p+'_date').value, dt=dv?new Date(dv+'T12:00').toLocaleDateString('fr-FR'):'';
   const objet=H?'housse de palettisation':'film de palettisation';
@@ -753,7 +784,7 @@ function buildPdf(p){
     const L=lines.filter(Boolean),step=L.length>3?5.1:5.6;let ly=yy+28.6;
     L.forEach(([txt,tag])=>{rich(t(txt),x+4,ly,w-8,tag);ly+=step});
   };
-  const gx=16,gw=(178-6)/2,gh=52;
+  const gx=16,gw=(178-6)/2,gh=52;y+=sp(doc);
   const tq=(o)=>o.tq?o.tq.toLowerCase():'';
   pillar(gx,y,gw,gh,'ÉCONOMIE',fmt(r.gBud)+' € / an','d\'économie sur le '+mat+' ('+fmt(r.pBud,1)+' %)','CALCULÉ',[
     [fmt(r.gPal,3)+' € gagnés par palette','CALCULÉ'],
@@ -763,7 +794,7 @@ function buildPdf(p){
     [fmt(r.gCO2/1000,1)+' t CO2e évitées, film et mandrins','ESTIMÉ'],
     [fmt(r.gMand)+' kg de mandrins en moins par an','CALCULÉ'],
     [fmt(B.rc*100)+' % de recyclé (objectif PPWR 35 %)','FICHE PRODUIT']]);
-  const y2=y+gh+6;
+  const y2=y+gh+6+sp(doc);
   pillar(gx,y2,gw,gh,'HUMAIN',fmt(r.gHeures,Math.abs(r.gHeures)<10?1:0)+' h / an','d\'intervention évitées par an','CALCULÉ',[
     [fmt(r.gBob)+' changements de bobine en moins par an','CALCULÉ'],
     r.casGain?[fmt(A.casN-B.casN)+' interventions sur casses en moins','CALCULÉ']:null,
@@ -828,7 +859,7 @@ function buildPdf(p){
     const total=B2.reduce((a,e)=>a+hOf(e),0)+2;
     const notesPage=doc.getNumberOfPages();let yy=y+2;
     const draw=(e)=>{const [k,x]=e;
-      if(k==='h'){if(yy+9+10>274){doc.addPage();header();yy=40}doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(...NUIT);doc.text(t(x),M,yy+5);yy+=10;return}
+      if(k==='h'){yy+=sp(doc);if(yy+9+10>274){doc.addPage();header();yy=40}doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(...NUIT);doc.text(t(x),M,yy+5);yy+=10;return}
       const l=lines(e);doc.setFont('helvetica',k==='n'?'italic':'normal');doc.setFontSize(SZ[k]);doc.setTextColor(...(k==='n'||k==='q'?GREY:DARK));
       l.forEach((ln,ix)=>{if(yy+LH[k]>276){doc.addPage();header();yy=40;doc.setFont('helvetica',k==='n'?'italic':'normal');doc.setFontSize(SZ[k]);doc.setTextColor(...(k==='n'||k==='q'?GREY:DARK))}
         if(k==='li'&&ix===0){doc.setFillColor(...GREEN);doc.circle(M+1.5,yy+2.6,.8,'F')}doc.text(ln,M+(k==='li'?6:0),yy+3.6);yy+=LH[k]});
@@ -837,7 +868,7 @@ function buildPdf(p){
     B2.forEach(draw);
     doc.setPage(notesPage)}
   doc.setFontSize(8.5);doc.setTextColor(...GREY);
-  doc.text(doc.splitTextToSize(t('Méthode : base de '+fmt(num(p+'_pj'))+' palettes par jour sur '+fmt(num(p+'_ja'))+' jours. Coût par palette = poids déposé x prix au kg net (hors mandrin). Densité retenue : '+fmt(num('dens'),2)+'. Temps d\'intervention : '+fmt(r.tc,1)+' min par changement de bobine'+(r.casA?' et par intervention sur casse de film (durée retenue identique)':'')+', valorisé à '+fmt(r.ch)+' €/h.'),W-2*M),M,268);
+  anchored(doc,()=>doc.text(doc.splitTextToSize(t('Méthode : base de '+fmt(num(p+'_pj'))+' palettes par jour sur '+fmt(num(p+'_ja'))+' jours. Coût par palette = poids déposé x prix au kg net (hors mandrin). Densité retenue : '+fmt(num('dens'),2)+'. Temps d\'intervention : '+fmt(r.tc,1)+' min par changement de bobine'+(r.casA?' et par intervention sur casse de film (durée retenue identique)':'')+', valorisé à '+fmt(r.ch)+' €/h.'),W-2*M),M,268));
 
   /* page Contrôle du film : blocs cochés dans l'onglet Contrôle */
   const inc1=!H&&$('c_inc1').checked,inc2=!H&&$('c_inc2').checked;
@@ -845,32 +876,32 @@ function buildPdf(p){
     try{film2ctrl(true)}catch(e){}
     const C=ctrl();
     doc.addPage();header();y=H1(doc,'Analyse du film actuel du client');
-    y=PARA(doc,'Les mesures de cette page portent sur le film actuellement utilisé par '+cli+', et non sur le film KL Groupe. Elles vérifient ses caractéristiques réelles par rapport aux données annoncées par son fournisseur, puis le pré-étirage réellement obtenu sur la machine du site.',y-2,10);
+    y=PARA(doc,'Les mesures de cette page portent sur le film actuellement utilisé par '+cli+', et non sur le film KL Groupe. Elles vérifient ses caractéristiques réelles par rapport aux données annoncées par son fournisseur, puis le pré-étirage réellement obtenu sur la machine du site.',y-3,9.5)-1;
     {doc.setFillColor(...SOFT);doc.roundedRect(M,y-1,W-2*M,9,1.5,1.5,'F');doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(...NUIT);
-      doc.text(t('Film analysé : film actuel du client, '+fmt(A.e)+' µ, bobine de '+fmt(A.pb,2)+' kg, '+fmt(A.d)+' g déposés par palette'),M+3,y+4.8);y+=14}
-    const tb=(rows)=>{AT(doc,{startY:y,margin:{left:M,right:M},head:[['Mesure','Valeur']],styles:{halign:'right',fontSize:9.4,cellPadding:{top:1.7,bottom:1.7,left:2.5,right:2.5}},
+      doc.text(t('Film analysé : film actuel du client, '+fmt(A.e)+' µ, bobine de '+fmt(A.pb,2)+' kg, '+fmt(A.d)+' g déposés par palette'),M+3,y+4.8);y+=13}
+    const tb=(rows)=>{AT(doc,{startY:y,margin:{left:M,right:M},head:[['Mesure','Valeur']],styles:{halign:'right',fontSize:9,cellPadding:{top:1.15,bottom:1.15,left:2.5,right:2.5}},
       columnStyles:{0:{halign:'left',cellWidth:110},1:{fontStyle:'bold',textColor:NUIT}},
       didParseCell:d=>{if(d.section==='head'&&d.column.index===0)d.cell.styles.halign='left'},
-      body:rows.map(([l,v])=>[t(l),t(v)])});y=doc.lastAutoTable.finalY+8};
+      body:rows.map(([l,v])=>[t(l),t(v)])});y=doc.lastAutoTable.finalY+5};
     if(inc1){
-      y=H2(doc,'Contrôle de la bobine du film actuel',y)+2;
+      y=H2(doc,'Contrôle de la bobine du film actuel',y)+1;
       tb([['Poids de la bobine',fmt(num('c_pb'))+' g'],['Poids du mandrin',fmt(num('c_m'))+' g'],['Poids net de film',fmt(C.net)+' g'],
         ['Largeur du film',fmt(num('c_l'),2)+' m']].concat(num('c_la')>0?[['Longueur annoncée',fmt(num('c_la'))+' m']]:[],num('c_ea')>0?[['Épaisseur annoncée',fmt(num('c_ea'),1)+' µ']]:[]));
       const kb=[];
       if(num('c_la')>0&&isFinite(C.eR)&&C.eR>0)kb.push([fmt(C.eR,1)+' µ','épaisseur réelle pour la longueur annoncée']);
       if(num('c_ea')>0&&isFinite(C.lR)&&C.lR>0)kb.push([fmt(C.lR)+' m','longueur réelle pour l\'épaisseur annoncée']);
       if(num('c_la')>0&&num('c_ea')>0&&isFinite(C.lR))kb.push([(C.lR-num('c_la')>0?'+':'')+fmt(C.lR-num('c_la'))+' m','écart avec la longueur annoncée']);
-      if(kb.length)y=KPI(doc,y,kb,26,17)+11;else y+=4;
+      if(kb.length)y=KPI(doc,y,kb,21,15)+9;else y+=4;
     }
     if(inc2){
-      if(inc1&&y>168){doc.addPage();header();y=42}
-      y=H2(doc,'Mesure du pré-étirage du film actuel',y)+2;
+      if(y+96>278){doc.addPage();header();y=42}
+      y=H2(doc,'Mesure du pré-étirage du film actuel',y)+1;
       tb([['Épaisseur du film',fmt(num('c_e'),1)+' µ'],['Largeur de la bobine',fmt(num('c_lb'),2)+' m'],['Dimensions de la palette',fmt(num('c_wp'),2)+' x '+fmt(num('c_lp'),2)+' m'],
         ['Nombre de tours',fmt(num('c_nt'))],['Poids de film mesuré par palette',fmt(num('c_pm'))+' g']].concat(C.hasPc?[['Pré-étirage cible',fmt(num('c_pc'))+' %']]:[]));
-      y=KPI(doc,y,[[fmt(C.tx*100)+' %','pré-étirage mesuré'],[fmt(C.eRes,1)+' µ','épaisseur résiduelle mesurée'],C.hasPc?[fmt(C.pCible)+' g','poids à déposer pour la cible']:[fmt(C.p0)+' g','poids théorique sans pré-étirage']],26,17)+6;
+      y=KPI(doc,y,[[fmt(C.tx*100)+' %','pré-étirage mesuré'],[fmt(C.eRes,1)+' µ','épaisseur résiduelle mesurée'],C.hasPc?[fmt(C.pCible)+' g','poids à déposer pour la cible']:[fmt(C.p0)+' g','poids théorique sans pré-étirage']],21,15)+5;
       const intro2='Le film présente un taux de pré-étirage mesuré de '+fmt(C.tx*100)+' %, ramenant son épaisseur de '+fmt(num('c_e'),1)+' à '+fmt(C.eRes,1)+' microns. Sans pré-étirage, la quantité théorique nécessaire pour réaliser le même nombre de tours serait de '+fmt(C.p0)+' g par palette.';
       y=PARA(doc,C.hasPc?intro2+' Au pré-étirage cible de '+fmt(num('c_pc'))+' %, il faut déposer '+fmt(C.pCible)+' g, soit une épaisseur résiduelle de '+fmt(C.eCible,1)+' µ. Écart mesuré par rapport à la cible : '+(C.ecart>0?'+':'')+fmt(C.ecart)+' g par palette.'
-        :intro2,y);
+        :intro2,y,9.8);
     }
   }
 
@@ -940,7 +971,7 @@ function buildPdf(p){
     alternateRowStyles:{fillColor:[246,250,246]}
   });
   y=doc.lastAutoTable.finalY+10;
-  const para=(titre,txt)=>{
+  const para=(titre,txt)=>{y+=sp(doc);
     doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(...NUIT);doc.text(t(titre),M,y);y+=6;
     doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(...DARK);
     const l=doc.splitTextToSize(t(txt),W-2*M);doc.text(l,M,y);y+=l.length*4.7+6;
@@ -955,7 +986,7 @@ function buildPdf(p){
   const meth3='Facteurs retenus : fabrication du PE vierge '+fmt(r.Fv,2)+' et du PE recyclé '+fmt(r.Fr,2)+' kg CO2e/kg, incinération '+fmt(r.Fi,2)+' kg CO2e/kg (Agence européenne pour l\'environnement, 2021), '+
     fmt(r.rec*100)+' % du '+obj+' recyclé après usage ; mandrins carton '+fmt(r.Fc,2)+' kg CO2e/kg (Pro Carton, 2024) et REP papier-carton '+fmt(r.tarifC)+' €/t (ordre de grandeur) ; extrusion et transport non inclus. Éco-contribution : '+fmt(r.tarif)+' €/t, valeur indicative issue des barèmes 2027 publiés (259 à 282 €/t HT hors bonus et malus). '+
     'Estimation à titre d\'information : elle ne remplace ni une analyse de cycle de vie ni la déclaration à l\'éco-organisme.';
-  {const ml=doc.splitTextToSize(t(meth3),W-2*M),h=ml.length*3.3;let yy=Math.max(y,262-h+14);if(yy+h>279){if(y+h<=279)yy=y;else{doc.addPage();header();yy=40}}doc.text(ml,M,yy)}
+  {const ml=doc.splitTextToSize(t(meth3),W-2*M),h=ml.length*3.3;let yy=Math.max(y,262-h+14);if(yy+h>279){if(y+h<=279)yy=y;else{doc.addPage();header();yy=40}}anchored(doc,()=>doc.text(ml,M,yy))}
   footer(3);
 
   /* page 4 : projection */
@@ -976,7 +1007,7 @@ function buildPdf(p){
   {const l=doc.splitTextToSize(t('Scénario 1 : économies sur le '+mat+' uniquement, gain directement calculé. Scénario 2 : économies sur le '+mat+' et estimation de l\'éco-contribution REP, scénario indicatif qui dépend du statut de l\'entreprise au regard de la REP.'),W-2*M);doc.text(l,M,y);y+=l.length*4+5}
   doc.setFontSize(8.5);doc.setTextColor(...GREY);
   {const hy=['Volume annuel constant de '+fmt(r.an)+' palettes.','Prix du '+mat+' constants, aux conditions de l\'essai.','Éco-contribution REP maintenue constante (scénario 2).','Maintien des performances de la solution sur cinq ans.'];
-    if(y+8+hy.length*4.6+6>279){doc.addPage();header();y=42}
+    y+=sp(doc);if(y+8+hy.length*4.6+6>279){doc.addPage();header();y=42}
     doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...NUIT);doc.text(t('Hypothèses retenues'),M,y);y+=5;
     doc.setFont('helvetica','normal');doc.setFontSize(9.2);doc.setTextColor(...DARK);
     hy.forEach(h=>{doc.setFillColor(...GREEN);doc.circle(M+1.5,y-1.1,.7,'F');doc.text(t(h),M+5,y);y+=4.6});
@@ -988,9 +1019,9 @@ function buildPdf(p){
 }
 
 function drawProj(doc,y,rows,lab1,costLab,opt={}){
-  const W=210,M=16;
+  const W=210,M=16;y+=sp(doc);
   doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(...NUIT);doc.text(t(opt.title||(costLab?'Gain net cumulé':'Économies cumulées')),M,y);y+=4;
-  const cx=M,cw=W-2*M,ch=62,cy=y,vals=rows.map(o=>o.cum),mx=Math.max(0,...vals),mn=Math.min(0,...vals),span=(mx-mn)||1;
+  const cx=M,cw=W-2*M,ch=62+el(doc,22),cy=y,vals=rows.map(o=>o.cum),mx=Math.max(0,...vals),mn=Math.min(0,...vals),span=(mx-mn)||1;
   const ph=ch-18,base=cy+8+mx/span*ph,bw=cw/5;
   doc.setDrawColor(...LINEC);doc.setLineWidth(.3);doc.line(cx,base,cx+cw,base);
   rows.forEach((o,i)=>{
@@ -1059,10 +1090,10 @@ function buildMachinePdf(){
   return {doc,name:'KL_Groupe_Investissement_'+safe+'_'+new Date().toISOString().slice(0,10)+'.pdf'};
 }
 
-function buildImpactPdf(p){
-  needData(p);
+function buildImpactPdf(p){needData(p);return adaptive(()=>buildImpactCore(p))}
+function buildImpactCore(p){
   const H=p==='h',r=calc(p),A=r[1],B=r[2],obj=H?'housse':'film',P=proj(p,r);
-  const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'}),W=210,M=16;
+  const doc=layDoc(),W=210,M=16;
   const cli=$(p+'_cli').value.trim()||'Client',dv=$(p+'_date').value,dt=dv?new Date(dv+'T12:00').toLocaleDateString('fr-FR'):'',today=new Date().toLocaleDateString('fr-FR');
   const header=()=>pageHead(doc,cli,'Fiche d\'impact environnemental');
   const tbl={theme:'grid',margin:{left:M,right:M},styles:{font:'helvetica',fontSize:9.3,textColor:DARK,lineColor:[217,226,218],cellPadding:2,halign:'right'},
@@ -1070,7 +1101,7 @@ function buildImpactPdf(p){
   coverHead(doc,cli,'AUDIT OPTIM\'PACK  |  KL GROUPE');
   let y;
   const need=h=>{if(y+h>272){doc.addPage();header();y=40}};
-  const title=(txt)=>{doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(...NUIT);doc.text(t(txt),M,y);y+=6};
+  const title=(txt)=>{y+=sp(doc);doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(...NUIT);doc.text(t(txt),M,y);y+=6};
   const para=(titre,txt,size=10)=>{
     doc.setFont('helvetica','normal');doc.setFontSize(size);const l=doc.splitTextToSize(t(txt),W-2*M);need(10+l.length*size*.47);
     if(titre)title(titre);
@@ -1087,7 +1118,7 @@ function buildImpactPdf(p){
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...GREY);doc.text(t('Indicateur opérationnel complémentaire : '+fmt(r.gBob)+' bobines en moins par an, soit autant de changements et de manutentions évités.'),M,y+1);y+=11;
   para('Objet','Cette fiche présente l\'estimation des bénéfices environnementaux annuels liés au passage à la solution KL Groupe, sur la base des mesures réalisées lors de l\'essai sur site. Elle détaille les données utilisées, les méthodes de calcul et les sources de référence afin de garantir la transparence et la traçabilité des résultats présentés. '+
     'Elle complète l\'audit de performance du conditionnement, dont elle constitue le justificatif environnemental et méthodologique, et peut être transmise à vos services RSE ou environnement.');
-  need(62);title('Résultats annuels');
+  need(54);title('Résultats annuels');
   AT(doc,Object.assign({startY:y,head:[['Indicateur','Actuel','KL Groupe','Écart']],body:[
     ['Plastique consommé',t(fmt(A.cons)+' kg'),t(fmt(B.cons)+' kg'),t(fmt(-r.gKg)+' kg ('+fmt(-r.pKg,1)+' %)')],
     ['Dont plastique vierge',t(fmt(A.vir)+' kg'),t(fmt(B.vir)+' kg'),t(fmt(-r.gVir)+' kg')],
@@ -1106,7 +1137,7 @@ function buildImpactPdf(p){
   note('Le taux de recyclage après usage de '+fmt(r.rec*100)+' % est une hypothèse identique appliquée aux deux solutions, et non une mesure de ce qui se passe réellement sur votre site.');
   /* méthode en trois blocs */
   need(20);title('Méthode de calcul');
-  const block=(n,ti,lines)=>{doc.setFont('helvetica','normal');doc.setFontSize(9.6);
+  const block=(n,ti,lines)=>{y+=sp(doc);doc.setFont('helvetica','normal');doc.setFontSize(9.6);
     const ls=lines.map(x=>doc.splitTextToSize(t(x),W-2*M-16));const h=10+ls.reduce((a,l)=>a+l.length*4.4,0)+1;need(h+4);
     doc.setFillColor(...SOFT);doc.roundedRect(M,y,W-2*M,h,2,2,'F');doc.setFillColor(...GREEN);doc.circle(M+6,y+6,3.2,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(255,255,255);doc.text(String(n),M+6,y+7.2,{align:'center'});
@@ -1527,7 +1558,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-224500';
+window.APP_VERSION='20261125-231000';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
