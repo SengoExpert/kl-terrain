@@ -438,16 +438,16 @@ function calc(p){
     const o=r[n];o.co2F=cons*fkg;o.co2M=o.mand*Fc;o.co2=o.co2F+o.co2M;o.repF=cons/1000*tarif;o.repM=o.mand/1000*tarifC;o.repAn=o.repF+o.repM;
   });
   const A=r[1],B=r[2];
-  r.gPal=A.cout-B.cout; r.gBud=A.bud-B.bud; r.gKg=A.cons-B.cons; r.gCO2=A.co2-B.co2; r.pCO2=pct(r.gCO2,A.co2);
-  r.gRep=A.repAn-B.repAn; r.gTot=Math.round(r.gBud)+Math.round(r.gRep); r.gVir=A.vir-B.vir;
+  r.gPal=A.cout-B.cout; r.gBud=Math.round(A.bud)-Math.round(B.bud); r.gKg=A.cons-B.cons; r.gCO2=A.co2-B.co2; r.pCO2=pct(r.gCO2,A.co2);
+  r.gRep=Math.round(A.repAn)-Math.round(B.repAn); r.gTot=Math.round(r.gBud)+Math.round(r.gRep); r.gVir=A.vir-B.vir;
   r.gBob=A.bob-B.bob; r.gMand=A.mand-B.mand;
   r.pBud=pct(r.gBud,A.bud); r.pKg=pct(r.gKg,A.cons);
   /* humain et performance : changements de bobine, casses, manutention, incidents */
   const has=id=>{const el=$(id);return !!el&&String(el.value).trim()!==''};
   const tc=num(p+'_tc'),ch=num('cho');r.tc=tc;r.ch=ch;
   r.casA=has(p+'_ca1');r.casB=has(p+'_ca2');r.casGain=r.casA&&r.casB;
-  [[A,1],[B,2]].forEach(([o,n])=>{o.ca=has(p+'_ca'+n)?num(p+'_ca'+n):0;o.casN=o.bob*o.ca;o.casPal=o.palBob>0?o.ca/o.palBob:NaN;o.kgManip=o.bob*o.pb;o.tq=($(p+'_tq'+n)||{}).value||''});
-  A.interv=A.bob+(r.casGain?A.casN:0);B.interv=B.bob+(r.casGain?B.casN:0);
+  [[A,1],[B,2]].forEach(([o,n])=>{o.ca=has(p+'_ca'+n)?num(p+'_ca'+n):0;o.casN=Math.round(o.bob)*o.ca;o.casPal=o.palBob>0?o.ca/o.palBob:NaN;o.kgManip=o.bob*o.pb;o.tq=($(p+'_tq'+n)||{}).value||''});
+  A.interv=Math.round(A.bob)+(r.casGain?A.casN:0);B.interv=Math.round(B.bob)+(r.casGain?B.casN:0);
   r.gInterv=A.interv-B.interv;r.gHeures=r.gInterv*tc/60;const rh=h=>Math.abs(h)<10?Math.round(h*10)/10:Math.round(h);r.gHeuresEur=rh(r.gHeures)*ch;
   r.casHeuresA=r.casA?A.casN*tc/60:0;r.casEurA=rh(r.casHeuresA)*ch;
   r.gManip=A.kgManip-B.kgManip;
@@ -766,7 +766,7 @@ function buildPdfCore(p,synth){
     doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(...DARK);doc.text(t('Optimisation économique, opérationnelle et environnementale du '+objet),M,67);
     doc.setFillColor(...GREEN);doc.rect(M,70.5,18,1.2,'F');y=80}
   y=infoRow(doc,y,[['Interlocuteur',intr],['Fonction',fct],['Date de l\'essai',dt],['Volume',fmt(r.an)+' palettes / an']]);
-  y=PARA(doc,'Cet audit va au-delà de la simple réduction de consommation de '+(H?'housse':'film étirable')+'. Il évalue les gains réalisés sur l\'ensemble de votre processus de conditionnement : performance économique, temps opérationnel, conditions de travail, impact environnemental et fiabilité des expéditions. Chaque résultat est présenté avec son niveau de preuve, pour vous apporter une vision claire, mesurable et transparente des améliorations obtenues.',y,10)+3;
+  y=PARA(doc,'Cet audit va au-delà de la simple réduction de consommation de '+(H?'housse':'film étirable')+'. Il évalue les gains réalisés sur l\'ensemble de votre processus de conditionnement : performance économique, temps opérationnel, conditions de travail, impact environnemental et fiabilité des expéditions. Chaque résultat est présenté avec son niveau de preuve, pour vous apporter une vision claire, mesurable et transparente des améliorations obtenues.',y-2,9.7)+1;
   const pill=(txt,x,yy)=>{doc.setFont('helvetica','bold');doc.setFontSize(6.3);const w=doc.getTextWidth(txt)+3;doc.setFillColor(...SOFT);doc.setDrawColor(...SUBC);doc.setLineWidth(.2);doc.roundedRect(x,yy-2.9,w,3.9,1,1,'FD');doc.setTextColor(...GREY);doc.text(txt,x+1.5,yy);return w};
   /* ligne de pilier : chiffres en gras, texte lisible, pastille du niveau de preuve à la suite */
   const rich=(txt,x,yy,maxW,tag)=>{
@@ -783,10 +783,10 @@ function buildPdfCore(p,synth){
     doc.setTextColor(...GREEN);fitSize(doc,t(big),w-8,19,11);doc.text(t(big),x+4,yy+16.5);
     doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...DARK);let bl=t(bigLab);doc.setFontSize(9);
     {doc.setFont('helvetica','bold');doc.setFontSize(6.3);const pw=doc.getTextWidth(bigTag)+5;doc.setFont('helvetica','normal');let fs=9;doc.setFontSize(fs);while(doc.getTextWidth(bl)>w-8-pw&&fs>7.4){fs-=.2;doc.setFontSize(fs)}doc.setTextColor(...DARK);doc.text(bl,x+4,yy+21.7);pill(bigTag,x+5+doc.getTextWidth(bl),yy+21.7)}
-    const L=lines.filter(Boolean),step=L.length>3?5.1:5.6;let ly=yy+28.6;
+    const L=lines.filter(Boolean),step=L.length>3?4.9:5.4;let ly=yy+28;
     L.forEach(([txt,tag])=>{rich(t(txt),x+4,ly,w-8,tag);ly+=step});
   };
-  const gx=16,gw=(178-6)/2,gh=52;y+=sp(doc);
+  const gx=16,gw=(178-6)/2,gh=48;y+=sp(doc);
   const tq=(o)=>o.tq?o.tq.toLowerCase():'';
   pillar(gx,y,gw,gh,'ÉCONOMIE',fmt(r.gBud)+' € / an','d\'économie sur le '+mat+' ('+fmt(r.pBud,1)+' %)','CALCULÉ',[
     [fmt(r.gPal,3)+' € gagnés par palette','CALCULÉ'],
@@ -796,7 +796,7 @@ function buildPdfCore(p,synth){
     [fmt(r.gCO2/1000,1)+' t CO2e évitées, film et mandrins','ESTIMÉ'],
     [fmt(r.gMand)+' kg de mandrins en moins par an','CALCULÉ'],
     [fmt(B.rc*100)+' % de recyclé, seuil PPWR 2030 à confirmer','FICHE PRODUIT']]);
-  const y2=y+gh+6+sp(doc);
+  const y2=y+gh+5+sp(doc);
   pillar(gx,y2,gw,gh,'HUMAIN',fmt(r.gHeures,Math.abs(r.gHeures)<10?1:0)+' h / an','d\'intervention évitées par an','CALCULÉ',[
     [fmt(r.gBob)+' changements de bobine en moins par an','CALCULÉ'],
     r.casGain?[fmt(A.casN-B.casN)+' interventions sur casses en moins','CALCULÉ']:null,
@@ -816,6 +816,9 @@ function buildPdfCore(p,synth){
   y=H2(doc,'La solution proposée',y)+2;
   [[L1,A,NUIT],['KL Groupe',B,GREEN]].forEach(([l,o,c])=>{doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...c);doc.text(t(l),16,y);
     doc.setFont('helvetica','normal');doc.setTextColor(...DARK);doc.text(t(fmt(o.e)+' µ, bobine de '+fmt(o.pb,2)+' kg, '+fmt(o.d)+' g déposés par palette'),56,y);y+=6});
+  if(r.gPal>0){y+=1+sp(doc);doc.setFillColor(...SOFT);doc.setFont('helvetica','bold');doc.setFontSize(9.6);
+    const cl=doc.splitTextToSize(t('L\'optimisation proposée permet de réduire le coût de conditionnement tout en améliorant la performance matière, la fiabilité des expéditions et les conditions d\'intervention des opérateurs.'),W-2*M-10);
+    const hc=cl.length*4.5+5;doc.roundedRect(M,y,W-2*M,hc,2,2,'F');doc.setFillColor(...GREEN);doc.rect(M,y,1.4,hc,'F');doc.setTextColor(...NUIT);doc.text(cl,M+5,y+5.6);y+=hc}
 
   if(synth){ /* synthèse décisionnelle : la page 1 seule */
     footAll(doc);const sf=cli.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'')||'Client';
@@ -934,7 +937,7 @@ function buildPdfCore(p,synth){
         alternateRowStyles:{fillColor:[246,250,246]}});
       y=doc.lastAutoTable.finalY+7;
       const b=cmp.rows.find(o=>o.best);
-      doc.setFont('helvetica','italic');doc.setFontSize(8.5);doc.setTextColor(...GREY);{const nl=doc.splitTextToSize(t('Économie calculée sur le '+mat+' seul, sur la même base que la page Résultats (hors éco-contribution). Chaque réglage est chiffré au prix du '+mat+' indiqué dans la colonne Film.'+(cmp.rows[1]&&cmp.rows[1].merged?' « '+cmp.rows[1].regLabel+' » correspond à la configuration machine de la solution retenue.':'')),W-2*M);doc.text(nl,M,y-2);y+=nl.length*3.8+2}
+      doc.setFont('helvetica','italic');doc.setFontSize(8.5);doc.setTextColor(...GREY);{const nl=doc.splitTextToSize(t('Économie calculée sur le '+mat+' seul, sur la même base que la page Résultats (hors éco-contribution). Chaque réglage est chiffré au prix du '+mat+' indiqué dans la colonne Film.'+(cmp.rows[1]&&cmp.rows[1].merged?' La ligne Solution KL Groupe correspond à la configuration machine retenue lors de l\'essai.':'')),W-2*M);doc.text(nl,M,y-2);y+=nl.length*3.8+2}
       {const tqB=(B.tq||'').toLowerCase(),ok=tqB==='correcte'||tqB==='bonne';
         let txt='L\'essai réalisé avec la solution KL Groupe permet de réduire le poids de '+mat+' déposé de '+fmt(A.d)+' g à '+fmt(B.d)+' g par palette'+(ok?', tout en conservant une tenue de palette jugée satisfaisante':'')+'. Cette configuration constitue la solution retenue à l\'issue des essais.';
         if(b&&!b.main)txt+=' Le réglage « '+b.label+' » a donné un résultat encore meilleur ('+fmt(b.d)+' g par palette, '+fmt(b.eco)+' € d\'économie par an) : il reste à confirmer avant d\'être retenu.';
@@ -966,9 +969,9 @@ function buildPdfCore(p,synth){
       row('Émissions annuelles '+(H?'de la housse':'du film'),A.co2F/1000,B.co2F/1000,'t CO2e',2,fmt(-(A.co2F-B.co2F)/1000,2)+' t'),
       row('Émissions annuelles des mandrins carton',A.co2M/1000,B.co2M/1000,'t CO2e',2,fmt(-(A.co2M-B.co2M)/1000,2)+' t'),
       row('Émissions annuelles totales',A.co2/1000,B.co2/1000,'t CO2e',1,fmt(-r.gCO2/1000,1)+' t'),
-      row('Éco-contribution REP plastique',A.repF,B.repF,'€',0,fmt(-(A.repF-B.repF))+' €'),
-      row('Éco-contribution REP mandrins carton',A.repM,B.repM,'€',0,fmt(-(A.repM-B.repM))+' €'),
-      row('Éco-contribution REP totale par an',A.repAn,B.repAn,'€',0,fmt(-r.gRep)+' €'),
+      row('Éco-contribution REP plastique',A.repF,B.repF,'€',0,fmt(Math.round(B.repF)-Math.round(A.repF))+' €'),
+      row('Éco-contribution REP mandrins carton',A.repM,B.repM,'€',0,fmt(Math.round(B.repM)-Math.round(A.repM))+' €'),
+      row('Éco-contribution REP totale par an',A.repAn,B.repAn,'€',0,fmt(Math.round(B.repAn)-Math.round(A.repAn))+' €'),
     ],
     styles:{font:'helvetica',fontSize:9.6,textColor:DARK,lineColor:[217,226,218],cellPadding:{top:1.5,bottom:1.5,left:2.4,right:2.4}},
     headStyles:{fillColor:GREEN,textColor:255,fontStyle:'bold'},
@@ -1568,7 +1571,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-232000';
+window.APP_VERSION='20261125-234000';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
