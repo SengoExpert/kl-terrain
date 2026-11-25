@@ -278,6 +278,9 @@ select{appearance:auto}
 
   <button class="btn" id="a_zip">Exporter le dossier d'audit</button>
   <p class="note" style="text-align:center">Envoyez ce fichier à Claude pour obtenir la présentation de restitution complète au modèle KL Groupe.</p>
+  <label class="btn ghost" for="a_imp" style="text-align:center">Importer un dossier d'audit (.zip)</label>
+  <input type="file" id="a_imp" accept=".zip,application/zip" class="file">
+  <p class="note" style="text-align:center">Recharge un dossier exporté : saisies, photos à leur place, réglages et signature, pour refaire les fiches PDF.</p>
   <button class="btn ghost" id="a_new">Commencer un nouvel audit</button>
   <p class="msg" id="a_msg"></p>
   <input type="file" id="a_file" accept="image/*" class="file">
@@ -1075,6 +1078,55 @@ function onAuditClick(ev){
   saveAudit();renderAudit();
 }
 ['a_items','a_regs'].forEach(id=>{$(id).addEventListener('input',onAuditInput);$(id).addEventListener('click',onAuditClick)});
+/* ---- import d'un dossier d'audit (.zip) : tout est remis en place ---- */
+function phFromB64(b64,mime){return new Promise(ok=>{const src='data:'+mime+';base64,'+b64,im=new Image();
+  im.onload=()=>ok({src,w:im.naturalWidth,h:im.naturalHeight});im.onerror=()=>ok(null);im.src=src})}
+function showPh(p,n){const img=$(p+'_im'+n),ph=PH[p][n];
+  if(ph){img.src=ph.src;img.hidden=false;img.parentElement.classList.add('has')}else{img.hidden=true;img.removeAttribute('src');img.parentElement.classList.remove('has')}}
+function putSig(p,ph){return new Promise(ok=>{
+  show(p==='f'?'film':'housse');
+  requestAnimationFrame(()=>{const st=SIG[p],c=$(p+'_sig');if(st.size)st.size();const ctx=c.getContext('2d'),r=c.getBoundingClientRect();
+    if(!r.width){ok(false);return}
+    const im=new Image();im.onload=()=>{ctx.clearRect(0,0,c.width,c.height);const k=Math.min((r.width-16)/im.width,(r.height-16)/im.height,1),w=im.width*k,h=im.height*k;
+      ctx.drawImage(im,(r.width-w)/2,(r.height-h)/2,w,h);st.has=true;ok(true)};im.onerror=()=>ok(false);im.src=ph.src})})}
+$('a_imp').addEventListener('change',async e=>{
+  const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;const msg=$('a_msg');
+  if(!window.JSZip){msg.textContent='Le module ZIP ne s\'est pas chargé. Vérifiez la connexion puis rouvrez la page.';return}
+  msg.textContent='Lecture du dossier…';
+  try{
+    const zip=await JSZip.loadAsync(f),dj=zip.file('dossier.json');
+    if(!dj)throw new Error('ce fichier n\'est pas un dossier d\'audit KL Groupe');
+    const D=JSON.parse(await dj.async('string'));
+    const pic=async name=>{if(!name)return null;const z=zip.file(name);if(!z)return null;return phFromB64(await z.async('base64'),name.endsWith('.png')?'image/png':'image/jpeg')};
+    const R=D.restauration;let p,n=0;
+    const A=freshAudit();
+    if(R){
+      p=R.src==='h'?'h':'f';A.src=p;A.side=R.side||'1';
+      Object.entries(R.inputs||{}).forEach(([k,v])=>{const el=$(k);if(!el||el.type==='file')return;if(el.type==='checkbox')el.checked=!!v;else el.value=v});
+      A.items=[];for(const it of (R.items||[])){const ph=await pic(it.fichier);if(ph)n++;A.items.push({key:it.key,label:it.label,remark:it.remark||'',photo:ph})}
+      A.regs=[];for(const g of (R.regs||[])){const ph=await pic(g.fichier);if(ph)n++;A.regs.push({id:g.id||'r'+Math.random().toString(36).slice(2,7),label:g.label,pre:g.pre||'',tension:g.tension||'',d:g.d||'',remark:g.remark||'',photo:ph})}
+      PH[p][1]=await pic(R.avant);PH[p][2]=await pic(R.apres);if(PH[p][1])n++;if(PH[p][2])n++;
+    }else{ /* dossier exporté avant cette version : on remet ce qu'on peut */
+      p=D.type==='housse'?'h':'f';A.src=p;
+      Object.entries(D.saisie||{}).forEach(([k,v])=>{const el=$(k);if(el&&el.type!=='file')el.value=v});
+      for(const o of (D.photos||[])){const ph=await pic(o.fichier);
+        if(o.rubrique==='Photo avant (onglet essai)'){PH[p][1]=ph;if(ph)n++;continue}
+        if(o.rubrique==='Photo après (onglet essai)'){PH[p][2]=ph;if(ph)n++;continue}
+        const d=AUDIT_DEF.find(x=>x.label===o.rubrique);if(ph)n++;
+        if(d){const it=A.items.find(x=>x.key===d.key);it.label=o.legende||d.label;it.remark=o.remarque||'';it.photo=ph}
+        else A.items.push({key:'x'+Math.random().toString(36).slice(2,8),label:o.legende||'Photo libre',remark:o.remarque||'',photo:ph})}
+      if((D.reglages||[]).length){A.regs=[];for(const g of D.reglages){const ph=await pic(g.fichier);if(ph)n++;
+        A.regs.push({id:'r'+Math.random().toString(36).slice(2,7),label:g.nom||'Réglage',pre:g.preEtirage||'',tension:g.tension||'',d:g.poidsDeposeG!=null?String(g.poidsDeposeG):'',remark:g.remarque||'',photo:ph})}}
+      if(D.validation){$(p+'_sgn').value=D.validation.signataire||'';$(p+'_sgf').value=D.validation.fonction||''}
+    }
+    AUD=A;showPh(p,1);showPh(p,2);saveAudit();renderAudit();render();save();
+    const sf=(R&&R.signature)||(D.validation&&D.validation.fichier),sp=await pic(sf);
+    if(sp)await putSig(p,sp);else{const st=SIG[p];if(st.size)st.size();const c=$(p+'_sig');c.getContext('2d').clearRect(0,0,c.width,c.height);st.has=false}
+    show(p==='f'?'film':'housse');
+    $(p+'_msg').textContent='Dossier « '+((D.client&&D.client.societe)||'client')+' » rechargé : '+n+' photo'+(n>1?'s':'')+(sp?', signature':'')+'. Vous pouvez refaire les fiches PDF.';
+    msg.textContent='Dossier rechargé.';
+  }catch(err){msg.textContent='Import impossible : '+(err&&err.message||'fichier illisible')+'.'}
+});
 $('a_file').addEventListener('change',async e=>{
   const f=e.target.files&&e.target.files[0];e.target.value='';if(!f||!shotTarget)return;
   try{shotTarget.photo=await loadPhoto(f);saveAudit();renderAudit()}catch(err){$('a_msg').textContent='Cette photo n\'a pas pu être lue. Essayez une photo JPEG ou PNG.'}
@@ -1095,12 +1147,19 @@ $('a_zip').addEventListener('click',async()=>{
   try{
     const zip=new JSZip(),photos=[];let n=0;
     const add=(ph,base)=>{if(!ph)return null;n++;const name='photos/'+String(n).padStart(2,'0')+'-'+slugF(base)+'.jpg';zip.file(name,ph.src.split(',')[1],{base64:true});return name};
-    AUD.items.forEach(it=>{const d=defOf(it.key);photos.push({rubrique:d?d.label:'Photo libre',legende:it.label,remarque:it.remark,pesee:auditWeightText(it),fichier:add(it.photo,it.label)})});
+    const itemF=AUD.items.map(it=>{const d=defOf(it.key),f=add(it.photo,it.label);photos.push({rubrique:d?d.label:'Photo libre',legende:it.label,remarque:it.remark,pesee:auditWeightText(it),fichier:f});return f});
     const cmp=regCompare(p);
-    const regs=AUD.regs.map(g=>({nom:g.label,preEtirage:g.pre,tension:g.tension,poidsDeposeG:num0(g.d)||null,remarque:g.remark,fichier:add(g.photo,'reglage-'+g.label)}));
-    if(PH[p][1])photos.push({rubrique:'Photo avant (onglet essai)',legende:'Avant',fichier:add(PH[p][1],'avant')});
-    if(PH[p][2])photos.push({rubrique:'Photo après (onglet essai)',legende:'Après',fichier:add(PH[p][2],'apres')});
+    const regF=AUD.regs.map(g=>add(g.photo,'reglage-'+g.label));
+    const regs=AUD.regs.map((g,i)=>({nom:g.label,preEtirage:g.pre,tension:g.tension,poidsDeposeG:num0(g.d)||null,remarque:g.remark,fichier:regF[i]}));
+    const avF=PH[p][1]?add(PH[p][1],'avant'):null,apF=PH[p][2]?add(PH[p][2],'apres'):null;
+    if(avF)photos.push({rubrique:'Photo avant (onglet essai)',legende:'Avant',fichier:avF});
+    if(apF)photos.push({rubrique:'Photo après (onglet essai)',legende:'Après',fichier:apF});
     if(SIG[p].has)zip.file('signature-validation.png',SIG[p].img().src.split(',')[1],{base64:true});
+    const allIn={};inputs.forEach(i=>{allIn[i.id]=i.type==='checkbox'?i.checked:i.value});
+    const restauration={version:1,src:p,side:AUD.side,inputs:allIn,
+      items:AUD.items.map((it,i)=>({key:it.key,label:it.label,remark:it.remark,fichier:itemF[i]})),
+      regs:AUD.regs.map((g,i)=>({id:g.id,label:g.label,pre:g.pre,tension:g.tension,d:g.d,remark:g.remark,fichier:regF[i]})),
+      avant:avF,apres:apF,signature:SIG[p].has?'signature-validation.png':null};
     const r=calc(p),A=r[1],B=r[2],P=proj(p,r);
     const dossier={format:'kl-groupe-audit/1',exporteLe:new Date().toISOString(),type:p==='h'?'housse':'film',
       client:{societe:cli,interlocuteur:$(p+'_int').value.trim(),fonction:$(p+'_fct').value.trim(),dateEssai:dv},
@@ -1111,7 +1170,8 @@ $('a_zip').addEventListener('click',async()=>{
         palettesAn:r.an},
       reglages:regs,comparatifReglages:cmp.rows.map(o=>({reglage:o.label,poidsDeposeG:o.d,coutPalette:o.cout,economieAn:o.ref?null:o.eco,co2EviteKgAn:o.ref?null:o.co2,meilleur:!!o.best})),
       photos,observations:$(p+'_notes').value.trim(),
-      validation:SIG[p].has?{signataire:$(p+'_sgn').value.trim(),fonction:$(p+'_sgf').value.trim(),fichier:'signature-validation.png'}:null};
+      validation:SIG[p].has?{signataire:$(p+'_sgn').value.trim(),fonction:$(p+'_sgf').value.trim(),fichier:'signature-validation.png'}:null,
+      restauration};
     zip.file('dossier.json',JSON.stringify(dossier,null,2));
     zip.file('LISEZMOI.txt','Dossier d\'audit KL Groupe - '+cli+' - '+dfr(dv)+'\nEnvoyez ce fichier .zip à Claude et demandez la présentation de restitution.\n');
     const blob=await zip.generateAsync({type:'blob'});
@@ -1230,7 +1290,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-133000';
+window.APP_VERSION='20261125-143000';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
