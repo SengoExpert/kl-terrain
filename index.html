@@ -762,8 +762,6 @@ function buildPdf(p){
   y=H2(doc,'La solution proposée',y)+2;
   [[L1,A,NUIT],['KL Groupe',B,GREEN]].forEach(([l,o,c])=>{doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...c);doc.text(t(l),16,y);
     doc.setFont('helvetica','normal');doc.setTextColor(...DARK);doc.text(t(fmt(o.e)+' µ, bobine de '+fmt(o.pb,2)+' kg, '+fmt(o.d)+' g déposés par palette'),56,y);y+=6});
-  y+=4;y=H2(doc,'Prochaine étape',y)+2;
-  PARA(doc,'Valider ensemble la solution retenue, puis organiser sa mise en place sur vos lignes avec un point de contrôle des gains.',y,10);
 
   /* page 2 : résultats détaillés */
   doc.addPage();header();y=H1(doc,'Résultats de l\'essai');
@@ -791,12 +789,15 @@ function buildPdf(p){
   y=KPI(doc,y,[[sg(B.d-A.d,0,'g'),'de '+mat+' déposé'],[fmt(r.gPal,3)+' €','gagnés par palette'],[sg(B.palBob-A.palBob),'palettes par bobine']],28,18)+10;
   if(B.kgNet>A.kgNet&&r.gPal>0)y=PARA(doc,'Le '+mat+' KL Groupe coûte un peu plus cher au kilo, mais il en faut moins sur chaque palette : c\'est le coût par palette qui compte, et il baisse.',y)+4;
   const notes=$(p+'_notes').value.trim();
-  if(notes){y=H2(doc,'Observations',y+2)+2;doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(...DARK);
-    let nl=doc.splitTextToSize(t(notes),W-2*M);const fit=Math.max(2,Math.floor((256-y)/5)),notesPage=doc.getNumberOfPages();
-    doc.text(nl.slice(0,fit),M,y);nl=nl.slice(fit);
-    while(nl.length){doc.addPage();header();let yy=H1(doc,'Observations (suite)');const n=Math.floor((276-yy)/5);
-      doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(...DARK);doc.text(nl.slice(0,n),M,yy);nl=nl.slice(n)}
-    doc.setPage(notesPage)}
+  if(notes){doc.setFont('helvetica','normal');doc.setFontSize(10.5);
+    let nl=doc.splitTextToSize(t(notes),W-2*M);const notesPage=doc.getNumberOfPages();
+    if(y+12+nl.length*5<=262){ /* tout tient sur la page 2 */
+      y=H2(doc,'Observations',y+2)+2;doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(...DARK);doc.text(nl,M,y)}
+    else{ /* pas assez de place : les observations passent sur une page à part */
+      let first=true;
+      while(nl.length){doc.addPage();header();let yy=H1(doc,first?'Observations':'Observations (suite)');first=false;const n=Math.floor((276-yy)/5);
+        doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(...DARK);doc.text(nl.slice(0,n),M,yy);nl=nl.slice(n)}
+      doc.setPage(notesPage)}}
   doc.setFontSize(8.5);doc.setTextColor(...GREY);
   doc.text(doc.splitTextToSize(t('Méthode : base de '+fmt(num(p+'_pj'))+' palettes par jour sur '+fmt(num(p+'_ja'))+' jours. Coût par palette = poids déposé x prix au kg net (hors mandrin). Densité retenue : '+fmt(num('dens'),2)+'.'),W-2*M),M,268);
 
@@ -1432,7 +1433,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-195500';
+window.APP_VERSION='20261125-200500';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
