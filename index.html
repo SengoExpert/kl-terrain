@@ -1005,10 +1005,18 @@ const AUDIT_DEF=[
   {key:'bobine',label:'Bobine pesée',w:'pb',unit:'kg'},
   {key:'mandrin',label:'Mandrin pesé',w:'m',unit:'kg'},
   {key:'nue',label:'Palette nue'},
-  {key:'actuel',label:'Palette filmée avec le film actuel',w:'d1',unit:'g déposés'},
-  {key:'kl',label:'Palette filmée avec le film KL Groupe',w:'d2',unit:'g déposés'},
-  {key:'tension',label:'Tension à l\'ouverture du film'}
+  {key:'fiche',label:'Fiche palette',alias:['fiche palette']},
+  {key:'actuel',label:'Palette filmée, film actuel',w:'d1',unit:'g déposés',alias:['palette filmee avec le film actuel']},
+  {key:'kl',label:'Palette filmée, film KL Groupe',w:'d2',unit:'g déposés',alias:['palette filmee avec le film kl groupe']},
+  {key:'tension1',label:'Tension à l\'ouverture, film actuel',alias:['tension a l ouverture du film','tension a l ouverture du film actuel']},
+  {key:'tension2',label:'Tension à l\'ouverture, film KL Groupe',alias:['tension a l ouverture du film klgroupe','tension a l ouverture du film kl groupe']},
+  {key:'pds1',label:'Poids du film déposé, film actuel',w:'d1',unit:'g déposés',alias:['poids du film depose actuel']},
+  {key:'pds2',label:'Poids du film déposé, film KL Groupe',w:'d2',unit:'g déposés',alias:['poids du film depose klgroupe','poids du film depose kl groupe']},
+  {key:'plaque',label:'Plaque machine',alias:['plaque machine']},
+  {key:'machine',label:'Machine',alias:['machine 1','machine']}
 ];
+const normL=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+const defByText=(...txt)=>{for(const x of txt){const n=normL(x);if(!n)continue;const d=AUDIT_DEF.find(d=>normL(d.label)===n||(d.alias||[]).some(a=>normL(a)===n));if(d)return d}return null};
 const freshAudit=()=>({src:'f',side:'1',items:AUDIT_DEF.map(d=>({key:d.key,label:d.label,remark:'',photo:null})),regs:[{id:'r1',label:'Réglage 1',pre:'',tension:'',d:'',remark:'',photo:null},{id:'r2',label:'Réglage 2',pre:'',tension:'',d:'',remark:'',photo:null}]});
 let AUD=freshAudit(),shotTarget=null;
 const defOf=k=>AUDIT_DEF.find(d=>d.key===k);
@@ -1120,8 +1128,9 @@ $('a_imp').addEventListener('change',async e=>{
       for(const o of (D.photos||[])){const ph=await pic(o.fichier);
         if(o.rubrique==='Photo avant (onglet essai)'){PH[p][1]=ph;if(ph)n++;continue}
         if(o.rubrique==='Photo après (onglet essai)'){PH[p][2]=ph;if(ph)n++;continue}
-        const d=AUDIT_DEF.find(x=>x.label===o.rubrique);if(ph)n++;
-        if(d){const it=A.items.find(x=>x.key===d.key);it.label=o.legende||d.label;it.remark=o.remarque||'';it.photo=ph}
+        const d=o.rubrique==='Photo libre'?defByText(o.legende):defByText(o.legende,o.rubrique);if(ph)n++;
+        const it=d&&A.items.find(x=>x.key===d.key&&!x.photo);
+        if(it){it.remark=o.remarque||'';it.photo=ph}
         else A.items.push({key:'x'+Math.random().toString(36).slice(2,8),label:o.legende||'Photo libre',remark:o.remarque||'',photo:ph})}
       if((D.reglages||[]).length){A.regs=[];for(const g of D.reglages){const ph=await pic(g.fichier);if(ph)n++;
         A.regs.push({id:'r'+Math.random().toString(36).slice(2,7),label:g.nom||'Réglage',pre:g.preEtirage||'',tension:g.tension||'',d:g.poidsDeposeG!=null?String(g.poidsDeposeG):'',remark:g.remarque||'',photo:ph})}}
@@ -1307,7 +1316,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-153000';
+window.APP_VERSION='20261125-160000';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
