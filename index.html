@@ -140,6 +140,7 @@ select{appearance:auto}
     <button role="tab" id="tab-audit" aria-selected="false" data-v="audit">Audit</button>
     <button role="tab" id="tab-mach" aria-selected="false" data-v="mach">Machine</button>
     <button role="tab" id="tab-ctrl" aria-selected="false" data-v="ctrl">Contrôle</button>
+    <button role="tab" id="tab-regl" aria-selected="false" data-v="regl">Réglages</button>
     <button role="tab" id="tab-suivi" aria-selected="false" data-v="suivi">Suivi</button>
   </div>
 </div></header>
@@ -358,6 +359,7 @@ select{appearance:auto}
   <p class="note">Les blocs cochés sont ajoutés sur une page « Contrôle du film » de la fiche PDF de l'onglet Film.</p>
 </section>
 
+<section id="v-regl" class="view" hidden>
 <div class="card">
   <h2>Réglages</h2>
   <div class="grid two">
@@ -371,6 +373,7 @@ select{appearance:auto}
   <p class="note">Valeurs d'exemple reprises de vos tableaux Excel. Facteurs CO₂ : Agence européenne pour l'environnement (2021), hors extrusion du film et transport. Éco-contribution REP emballages professionnels à partir du 1er janvier 2027 : barèmes publiés entre 259 et 282 €/t HT selon l'éco-organisme, hors bonus et malus. Estimations à titre d'information, à ajuster selon vos sources.</p>
   <button class="btn ghost" id="reset">Remettre les valeurs d'exemple</button>
 </div>
+</section>
 
 </main>
 
@@ -634,8 +637,10 @@ function photoGrid(doc,y,list,newPage){
   return y;
 }
 
+function needData(p){const r=calc(p);if(!(r[1].d>0&&r[2].d>0&&r.an>0))throw new Error('renseignez d\'abord les poids déposés (actuel et KL Groupe) et les palettes par jour')}
 function buildPdf(p){
   const H=p==='h',r=calc(p),A=r[1],B=r[2];
+  needData(p);
   const {jsPDF}=window.jspdf, doc=new jsPDF({unit:'mm',format:'a4'}), W=210, M=16;
   const cli=$(p+'_cli').value.trim()||'Client', intr=$(p+'_int').value.trim(), fct=$(p+'_fct').value.trim();
   const dv=$(p+'_date').value, dt=dv?new Date(dv+'T12:00').toLocaleDateString('fr-FR'):'';
@@ -880,6 +885,7 @@ function buildMachinePdf(){
 }
 
 function buildImpactPdf(p){
+  needData(p);
   const H=p==='h',r=calc(p),A=r[1],B=r[2],obj=H?'housse':'film';
   const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'}),W=210,M=16;
   const cli=$(p+'_cli').value.trim()||'Client',dv=$(p+'_date').value,dt=dv?new Date(dv+'T12:00').toLocaleDateString('fr-FR'):'',today=new Date().toLocaleDateString('fr-FR');
@@ -1137,8 +1143,17 @@ $('a_src').addEventListener('change',()=>{AUD.src=$('a_src').value;saveAudit();r
 $('a_addph').addEventListener('click',()=>{AUD.items.push({key:'x'+Date.now().toString(36),label:'Photo libre',remark:'',photo:null});saveAudit();renderAudit()});
 $('a_addreg').addEventListener('click',()=>{AUD.regs.push({id:'r'+Date.now().toString(36),label:'Réglage '+(AUD.regs.length+1),pre:'',tension:'',d:'',remark:'',photo:null});saveAudit();renderAudit()});
 $('a_new').addEventListener('click',e=>{const b=e.currentTarget;
-  if(b.dataset.c!=='1'){b.dataset.c='1';b.textContent='Confirmer : effacer les photos et réglages de l\'audit';return}
-  b.dataset.c='';b.textContent='Commencer un nouvel audit';const src=AUD.src;AUD=freshAudit();AUD.src=src;saveAudit();renderAudit();$('a_msg').textContent='Nouvel audit prêt.'});
+  if(b.dataset.c!=='1'){b.dataset.c='1';b.textContent='Confirmer : vider l\'audit, l\'onglet Film et le contrôle';return}
+  b.dataset.c='';b.textContent='Commencer un nouvel audit';const src=AUD.src;AUD=freshAudit();AUD.src=src;
+  /* onglet Film : tout vide sauf la bobine KL Groupe type et les jours travaillés */
+  const KEEP={f_pb2:'17,5',f_m2:'1',f_l2:'0,5',f_ja:'220'};
+  inputs.forEach(i=>{if(!i.id.startsWith('f_'))return;if(i.tagName==='SELECT'){i.value='brut';return}i.value=KEEP[i.id]!=null?KEEP[i.id]:''});
+  PH.f[1]=null;PH.f[2]=null;showPh('f',1);showPh('f',2);
+  {const st=SIG.f,c=$('f_sig');if(st.size)st.size();c.getContext('2d').clearRect(0,0,c.width,c.height);st.has=false}
+  /* onglet Contrôle : tout vide sauf la palette 0,8 x 1,2 */
+  ['c_pb','c_m','c_l','c_la','c_ea','c_e','c_lb','c_nt','c_pm','c_pc'].forEach(id=>$(id).value='');
+  $('c_wp').value='0,8';$('c_lp').value='1,2';$('c_inc1').checked=false;$('c_inc2').checked=false;
+  setDates();saveAudit();renderAudit();render();save();$('a_msg').textContent='Nouvel audit prêt : onglet Film et contrôle remis à zéro.'});
 $('a_zip').addEventListener('click',async()=>{
   const msg=$('a_msg');
   if(!window.JSZip){msg.textContent='Le module d\'export ne s\'est pas chargé. Vérifiez la connexion puis rouvrez la page.';return}
@@ -1292,7 +1307,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-150000';
+window.APP_VERSION='20261125-153000';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
