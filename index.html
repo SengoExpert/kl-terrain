@@ -291,16 +291,28 @@ select{appearance:auto}
   </div><p class="note">Pour les films techniques ou manuels : le calcul se fait en mètres linéaires et en coût par palette, sans jamais afficher de prix au kilo.</p></div>
   <div class="card"><h2>Films au mètre</h2><div class="grid">
     <span></span><span class="colh">Film 1</span><span class="colh kl">Film 2 (facultatif)</span>
-    <label>Désignation</label><input id="l_n1" type="text" placeholder="Film actuel"><input id="l_n2" type="text" placeholder="Film proposé">
+    <label>Désignation</label><input id="l_n1" type="text" placeholder="Solution actuelle"><input id="l_n2" type="text" placeholder="Solution technique">
+    <label>Mode de valorisation</label><select id="l_mo1"><option value="m">Au mètre linéaire</option><option value="a">Par application</option></select><select id="l_mo2"><option value="m">Au mètre linéaire</option><option value="a">Par application</option></select>
+    <label>Prix par application (€ / palette), mode par application</label><input id="l_pa1" inputmode="decimal" placeholder="si par application"><input id="l_pa2" inputmode="decimal" placeholder="si par application">
     <label>Poids brut bobine (kg)</label><input id="l_pb1" inputmode="decimal" placeholder=""><input id="l_pb2" inputmode="decimal" placeholder="">
     <label>Poids mandrin (kg)</label><input id="l_m1" inputmode="decimal" placeholder=""><input id="l_m2" inputmode="decimal" placeholder="">
     <label>Longueur de la bobine (m)</label><input id="l_len1" inputmode="decimal" placeholder=""><input id="l_len2" inputmode="decimal" placeholder="">
     <label>Laize (mm)</label><input id="l_lz1" inputmode="decimal" placeholder=""><input id="l_lz2" inputmode="decimal" placeholder="">
     <label>Prix de la bobine (€ HT)</label><input id="l_pr1" inputmode="decimal" placeholder=""><input id="l_pr2" inputmode="decimal" placeholder="">
-    <label>Bobines par palette (livraison)</label><input id="l_bp1" inputmode="decimal" placeholder=""><input id="l_bp2" inputmode="decimal" placeholder="">
+    <label>Bobines par palette logistique</label><input id="l_bp1" inputmode="decimal" placeholder=""><input id="l_bp2" inputmode="decimal" placeholder="">
     <label>Poids déposé par palette (g)</label><input id="l_d1" inputmode="decimal" placeholder="mesuré"><input id="l_d2" inputmode="decimal" placeholder="mesuré">
+    <label>Mètres consommés par palette, si mesurés directement</label><input id="l_ml1" inputmode="decimal" placeholder="facultatif"><input id="l_ml2" inputmode="decimal" placeholder="facultatif">
     <label>Nombre de tours</label><input id="l_t1" inputmode="decimal" placeholder=""><input id="l_t2" inputmode="decimal" placeholder="">
-  </div></div>
+  </div><p class="note">Sans mètres mesurés, la longueur consommée est estimée à partir de la pesée du film utilisé, rapportée au poids linéaire du film.</p></div>
+  <div class="card"><h2>Performance technique (facultatif)</h2><div class="grid">
+    <span></span><span class="colh">Film 1</span><span class="colh kl">Film 2</span>
+    <label>Température initiale de la palette (°C)</label><input id="l_ti1" inputmode="decimal"><input id="l_ti2" inputmode="decimal">
+    <label>Température après la durée de mesure (°C)</label><input id="l_tf1" inputmode="decimal"><input id="l_tf2" inputmode="decimal">
+    <label>Temps pour atteindre la température cible (h)</label><input id="l_tt1" inputmode="decimal"><input id="l_tt2" inputmode="decimal">
+  </div><div class="grid two">
+    <label for="l_td">Durée de mesure (h)</label><input id="l_td" inputmode="decimal">
+    <label for="l_tc">Température cible (°C)</label><input id="l_tc" inputmode="decimal">
+  </div><p class="note">Aucune amélioration thermique n'est annoncée sans mesures des deux films dans les mêmes conditions.</p></div>
   <div class="card"><h2>Palette et volume</h2><div class="grid two">
     <label for="l_wp">Largeur palette (m)</label><input id="l_wp" inputmode="decimal" value="0,8">
     <label for="l_lp">Longueur palette (m)</label><input id="l_lp" inputmode="decimal" value="1,2">
@@ -568,20 +580,23 @@ const tile=(v,l,hero)=>`<div class="tile${hero?' hero':''}"><b>${v}</b><span>${l
 /* ---- calcul au mètre linéaire ---- */
 function lcalc(){
   const has=id=>String($(id).value).trim()!=='',per=2*(num('l_wp')+num('l_lp')),an=num('l_pj')*num('l_ja');
-  const F=[1,2].map(n=>{const k=x=>'l_'+x+n,o={n,name:$(k('n')).value.trim()||(n===1?'Film actuel':'Film proposé')};
-    o.len=num(k('len'));o.pr=num(k('pr'));o.net=(num(k('pb'))-num(k('m')))*1000;o.lz=num(k('lz'));o.bp=num(k('bp'));o.d=num(k('d'));o.t=num(k('t'));
-    o.ok=o.len>0&&o.pr>0;o.gm=o.len>0&&o.net>0?o.net/o.len:NaN;o.cm=o.len>0?o.pr/o.len:NaN;
-    o.mPal=o.d>0&&o.gm>0?o.d/o.gm:NaN;o.cPal=o.mPal*o.cm;o.palBob=o.mPal>0?o.len/o.mPal:NaN;
-    o.pre=o.t>0&&o.mPal>0?(o.t*per/o.mPal-1)*100:NaN;o.cAn=an>0?o.cPal*an:NaN;o.mAn=an>0?o.mPal*an:NaN;return o});
+  const F=[1,2].map(n=>{const k=x=>'l_'+x+n,o={n,name:$(k('n')).value.trim()||(n===1?'Solution actuelle':'Solution technique')};
+    o.app=$(k('mo')).value==='a';o.pa=num(k('pa'));
+    o.len=num(k('len'));o.pr=num(k('pr'));o.net=(num(k('pb'))-num(k('m')))*1000;o.lz=num(k('lz'));o.bp=num(k('bp'));o.d=num(k('d'));o.t=num(k('t'));o.ml=num(k('ml'));
+    o.gm=o.len>0&&o.net>0?o.net/o.len:NaN;o.cm=o.len>0&&o.pr>0?o.pr/o.len:NaN;o.cm2=o.cm>0&&o.lz>0?o.cm/(o.lz/1000):NaN;
+    o.mMes=o.ml>0;o.mPal=o.mMes?o.ml:(o.d>0&&o.gm>0?o.d/o.gm:NaN);
+    o.cPal=o.app?(o.pa>0?o.pa:NaN):o.mPal*o.cm;o.ok=o.app?o.pa>0:(o.len>0&&o.pr>0&&isFinite(o.cPal));
+    o.palBob=o.mPal>0&&o.len>0?o.len/o.mPal:NaN;o.pre=o.t>0&&o.mPal>0?(o.t*per/o.mPal-1)*100:NaN;o.cAn=an>0?o.cPal*an:NaN;o.mAn=an>0&&o.mPal>0?o.mPal*an:NaN;
+    o.ti=has(k('ti'))?num(k('ti')):NaN;o.tf=has(k('tf'))?num(k('tf')):NaN;o.tt=has(k('tt'))?num(k('tt')):NaN;o.hasT=isFinite(o.ti)||isFinite(o.tf)||isFinite(o.tt);return o});
   const [A,B]=F,two=B.ok&&isFinite(B.cPal);
-  return {A,B,two,an,per,gPal:two?A.cPal-B.cPal:NaN,gAn:two&&an>0?(A.cPal-B.cPal)*an:NaN,gM:two?A.mPal-B.mPal:NaN};
+  return {A,B,two,an,per,gPal:two?A.cPal-B.cPal:NaN,gAn:two&&an>0?(A.cPal-B.cPal)*an:NaN,gM:two?A.mPal-B.mPal:NaN,td:num('l_td'),tc:String($('l_tc').value).trim()!==''?num('l_tc'):NaN};
 }
 function renderLin(){
   const L=lcalc(),f=(v,d=0,u='')=>isFinite(v)?fmt(v,d)+u:'–';
-  const col=o=>tile(f(o.cPal,2,' €'),'par palette, '+esc(o.name),true)+tile(f(o.cm,3,' €'),'le mètre linéaire')+tile(f(o.mPal,1,' m'),'de film déposé par palette')+
-    tile(f(o.palBob,0),'palettes par bobine')+(isFinite(o.pre)?tile(f(o.pre,0,' %'),'pré-étirage estimé'):'')+(isFinite(o.cAn)?tile(f(o.cAn,0,' €'),'par an'):'');
+  const col=o=>tile(f(o.cPal,2,' €'),'par palette, '+esc(o.name)+(o.app?' (par application)':''),true)+(o.app?'':tile(f(o.cm,3,' €'),'le mètre linéaire, laize '+f(o.lz,0,' mm'))+tile(f(o.mPal,1,' m'),'consommés par palette'+(o.mMes?' (mesurés)':' (estimés par pesée)'))+
+    tile(f(o.palBob,0),'palettes par bobine')+(isFinite(o.pre)?tile(f(o.pre,0,' %'),'pré-étirage estimé'):''))+(isFinite(o.cAn)?tile(f(o.cAn,0,' €'),'par an'):'');
   let h=col(L.A);
-  if(L.two){h+=col(L.B)+tile((L.gPal>=0?'':'+')+f(Math.abs(L.gPal),2,' €'),(L.gPal>=0?'économisés':'en plus')+' par palette avec '+esc(L.B.name),true)+(isFinite(L.gAn)?tile(f(Math.abs(L.gAn),0,' €'),(L.gAn>=0?'d\'économie':'de surcoût')+' par an'):'')}
+  if(L.two){const sur=L.gPal<0;h+=col(L.B)+tile(f(Math.abs(L.gPal),2,' €'),(sur?'de surcoût':'d\'économie')+' par palette avec '+esc(L.B.name),true)+(isFinite(L.gAn)?tile(f(Math.abs(L.gAn),0,' €'),(sur?'de surcoût':'d\'économie')+' par an'):'')}
   $('l_res').innerHTML=h;
 }
 function renderMachine(){
@@ -1227,38 +1242,55 @@ function buildMachineCore(){
 }
 
 function buildLinPdf(){
-  const L=lcalc();if(!L.A.ok||!isFinite(L.A.cPal))throw new Error('renseignez d\'abord, pour le film 1, la longueur, le prix et le poids de la bobine, le mandrin et le poids déposé par palette');
+  const L=lcalc();if(!L.A.ok||!isFinite(L.A.cPal))throw new Error('renseignez d\'abord le film 1 : longueur, prix et poids de la bobine, mandrin et film consommé par palette (ou le prix par application)');
   return adaptive(()=>buildLinCore(L))}
 function buildLinCore(L){
-  const doc=layDoc(),W=210,M=16,A=L.A,B=L.B,two=L.two;
+  const doc=layDoc(),W=210,M=16,A=L.A,B=L.B,two=L.two,anyM=!A.app||(two&&!B.app);
   const cli=$('l_cli').value.trim()||'Client',dv=$('l_date').value,dt=dv?new Date(dv+'T12:00').toLocaleDateString('fr-FR'):new Date().toLocaleDateString('fr-FR');
   const f=(v,d=0,u='')=>isFinite(v)?fmt(v,d)+u:'-',sg=(v,d=0,u='')=>isFinite(v)?(v>0?'+':'')+fmt(v,d)+u:'';
   coverHead(doc,cli,'AUDIT OPTIM\'PACK  |  KL GROUPE');
-  let y;{doc.setTextColor(...NUIT);doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text(t('COÛT DU FILM AU MÈTRE LINÉAIRE'),M,60);
-    doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(...DARK);doc.text(t(two?'Comparaison de deux films en mètres déposés et en coût par palette':'Analyse en mètres déposés et en coût par palette'),M,67);
+  let y;{doc.setTextColor(...NUIT);doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text(t('COÛT RÉEL D\'UTILISATION DU FILM'),M,60);
+    doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(...DARK);doc.text(t((anyM?'Valorisation au mètre linéaire':'Valorisation par application')+(two?', comparaison de la solution actuelle et de la solution technique':', coût par palette')),M,67);
     doc.setFillColor(...GREEN);doc.rect(M,70.5,18,1.2,'F');y=80}
-  y=infoRow(doc,y,[['Interlocuteur',$('l_int').value.trim()],['Date',dt],['Volume',L.an>0?fmt(L.an)+' palettes / an':'-'],['Film'+(two?'s':''),two?A.name+' / '+B.name:A.name]]);
-  y=PARA(doc,'Pour un film technique, le bon indicateur n\'est pas le prix de la matière mais ce que coûte réellement chaque palette filmée, à partir du film déposé lors de l\'essai.',y-2,9.8)+1;
-  y=KPI(doc,y,two?[[f(L.gPal,2,' €'),'économisés par palette avec '+B.name],[isFinite(L.gAn)?f(L.gAn,0,' €'):f(B.cPal,2,' €'),isFinite(L.gAn)?'d\'économie par an':'par palette avec '+B.name],[sg(-L.gM,1,' m'),'de film déposé par palette']]
-    :[[f(A.cPal,2,' €'),'par palette filmée'],[f(A.cm,3,' €'),'le mètre linéaire'],[f(A.mPal,1,' m'),'de film déposé par palette']],25,18)+8;
-  const rows=[['Longueur de la bobine',f(A.len,0,' m'),f(B.len,0,' m'),sg(B.len-A.len,0,' m')],['Laize',f(A.lz,0,' mm'),f(B.lz,0,' mm'),''],['Prix de la bobine HT',f(A.pr,2,' €'),f(B.pr,2,' €'),sg(B.pr-A.pr,2,' €')],
-    ['Coût au mètre linéaire',f(A.cm,3,' €'),f(B.cm,3,' €'),sg(B.cm-A.cm,3,' €')],['Mètres déposés par palette',f(A.mPal,1,' m'),f(B.mPal,1,' m'),sg(B.mPal-A.mPal,1,' m')],
+  y=infoRow(doc,y,[['Interlocuteur',$('l_int').value.trim()],['Date',dt],['Volume',L.an>0?fmt(L.an)+' palettes / an':'-'],['Solution'+(two?'s':''),two?A.name+' / '+B.name:A.name]]);
+  y=PARA(doc,'Pour un film technique, le client achète d\'abord une fonction (aération, maintien de charge, protection). Le bon indicateur n\'est pas le prix de la matière mais ce que coûte réellement chaque palette filmée.',y-2,9.8)+1;
+  const sur=two&&L.gPal<0;
+  y=KPI(doc,y,two?[[f(A.cPal,2,' €')+' > '+f(B.cPal,2,' €'),'par palette, '+A.name+' puis '+B.name],[f(Math.abs(L.gPal),2,' €'),(sur?'de surcoût':'d\'économie')+' par palette'],[isFinite(L.gAn)?f(Math.abs(L.gAn),0,' €'):sg(-L.gM,1,' m'),isFinite(L.gAn)?(sur?'de surcoût':'d\'économie')+' par an':'de film consommé par palette']]
+    :[[f(A.cPal,2,' €'),'par palette filmée'],A.app?[f(A.pa,2,' €'),'par application']:[f(A.cm,3,' €'),'le mètre linéaire, laize '+f(A.lz,0,' mm')],A.app?[isFinite(A.cAn)?f(A.cAn,0,' €'):'-','par an']:[f(A.mPal,1,' m'),'consommés par palette']],25,17)+8;
+  const lab=o=>o.app?'par application':(o.mMes?'mesurés':'estimés par pesée');
+  const rows=(A.app||B.app?[['Mode de valorisation',A.app?'Par application':'Au mètre linéaire',B.app?'Par application':'Au mètre linéaire','']]:[]).concat([
+    ['Longueur de la bobine',f(A.len,0,' m'),f(B.len,0,' m'),sg(B.len-A.len,0,' m')],['Laize (largeur du film)',f(A.lz,0,' mm'),f(B.lz,0,' mm'),''],['Prix de la bobine HT',f(A.pr,2,' €'),f(B.pr,2,' €'),sg(B.pr-A.pr,2,' €')],
+    ['Coût au mètre linéaire',f(A.cm,3,' €'),f(B.cm,3,' €'),sg(B.cm-A.cm,3,' €')],['Coût au mètre carré de film',f(A.cm2,3,' €'),f(B.cm2,3,' €'),sg(B.cm2-A.cm2,3,' €')],
+    ['Mètres consommés par palette ('+lab(A)+(two?' / '+lab(B):'')+')',f(A.mPal,1,' m'),f(B.mPal,1,' m'),sg(B.mPal-A.mPal,1,' m')],
     ['Coût par palette',f(A.cPal,2,' €'),f(B.cPal,2,' €'),sg(B.cPal-A.cPal,2,' €')],['Palettes par bobine',f(A.palBob,0),f(B.palBob,0),sg(B.palBob-A.palBob,0)],
-    ['Nombre de tours',f(A.t,0),f(B.t,0),''],['Pré-étirage estimé',f(A.pre,0,' %'),f(B.pre,0,' %'),'']]
-    .concat(A.bp>0||B.bp>0?[['Bobines par palette livrée',f(A.bp>0?A.bp:NaN,0),f(B.bp>0?B.bp:NaN,0),'']]:[])
-    .concat(L.an>0?[['Mètres de film par an',f(A.mAn,0,' m'),f(B.mAn,0,' m'),sg(B.mAn-A.mAn,0,' m')],['Coût annuel',f(A.cAn,0,' €'),f(B.cAn,0,' €'),sg(B.cAn-A.cAn,0,' €')]]:[]);
+    ['Nombre de tours',f(A.t,0),f(B.t,0),''],['Pré-étirage estimé',f(A.pre,0,' %'),f(B.pre,0,' %'),'']])
+    .concat(A.bp>0||B.bp>0?[['Bobines par palette logistique',f(A.bp>0?A.bp:NaN,0),f(B.bp>0?B.bp:NaN,0),'']]:[])
+    .concat(L.an>0?[['Mètres de film par an',f(A.mAn,0,' m'),f(B.mAn,0,' m'),sg(B.mAn-A.mAn,0,' m')],['Coût annuel',f(A.cAn,0,' €'),f(B.cAn,0,' €'),sg(B.cAn-A.cAn,0,' €')]]:[])
+    .filter(r=>(two?[r[1],r[2]]:[r[1]]).some(v=>v!=='-'));
   y=H2(doc,'Détail du calcul',y)+2;
-  AT(doc,{startY:y,margin:{left:M,right:M},head:[two?['',A.name,B.name,'Écart']:['',A.name]],styles:{halign:'right',fontSize:9.4,cellPadding:{top:1.8,bottom:1.8,left:2.5,right:2.5}},
-    columnStyles:{0:{halign:'left',cellWidth:two?72:110},2:{fontStyle:'bold',textColor:NUIT}},didParseCell:d=>{if(d.section==='head'&&d.column.index===0)d.cell.styles.halign='left'},
+  AT(doc,{startY:y,margin:{left:M,right:M},head:[two?['',A.name,B.name,'Écart']:['',A.name]],styles:{halign:'right',fontSize:9,cellPadding:{top:1.3,bottom:1.3,left:2.5,right:2.5}},
+    columnStyles:{0:{halign:'left',cellWidth:two?80:110},2:{fontStyle:'bold',textColor:NUIT}},didParseCell:d=>{if(d.section==='head'&&d.column.index===0)d.cell.styles.halign='left'},
     body:rows.map(r=>(two?r:r.slice(0,2)).map(t))});
-  y=doc.lastAutoTable.finalY+8;
+  y=doc.lastAutoTable.finalY+7;
+  /* performance technique : seulement si mesurée */
+  if(A.hasT||(two&&B.hasT)){
+    const both=two&&A.hasT&&B.hasT,tr=[['Température initiale de la palette',f(A.ti,1,' °C'),f(B.ti,1,' °C')],['Température après '+(L.td>0?fmt(L.td,1)+' h':'la durée de mesure'),f(A.tf,1,' °C'),f(B.tf,1,' °C')],
+      ['Baisse de température',isFinite(A.ti)&&isFinite(A.tf)?fmt(A.ti-A.tf,1)+' °C':'-',isFinite(B.ti)&&isFinite(B.tf)?fmt(B.ti-B.tf,1)+' °C':'-'],
+      ['Temps pour atteindre '+(isFinite(L.tc)?fmt(L.tc,1)+' °C':'la température cible'),f(A.tt,1,' h'),f(B.tt,1,' h')]].filter(r=>r[1]!=='-'||r[2]!=='-');
+    if(y+12+tr.length*7+14>278){doc.addPage();pageHead(doc,cli,'Coût réel d\'utilisation du film');y=40}
+    y=H2(doc,'Performance technique mesurée',y)+2;
+    AT(doc,{startY:y,margin:{left:M,right:M},head:[two?['',A.name,B.name]:['',A.name]],styles:{halign:'right',fontSize:9.2,cellPadding:{top:1.6,bottom:1.6,left:2.5,right:2.5}},
+      columnStyles:{0:{halign:'left',cellWidth:two?90:110}},didParseCell:d=>{if(d.section==='head'&&d.column.index===0)d.cell.styles.halign='left'},body:tr.map(r=>(two?r:r.slice(0,2)).map(t))});
+    y=doc.lastAutoTable.finalY+4;doc.setFont('helvetica','italic');doc.setFontSize(8.6);doc.setTextColor(...GREY);
+    const nl=doc.splitTextToSize(t(both?'Mesures relevées dans les mêmes conditions d\'essai pour les deux films. Le coût par palette se lit en regard de ce bénéfice technique.':'Mesure d\'un seul film : aucune comparaison thermique n\'est tirée sans mesure de l\'autre solution dans les mêmes conditions.'),W-2*M);doc.text(nl,M,y);y+=nl.length*3.8+5}
   const notes=$('l_notes').value.trim();
   if(notes)y=PARA(doc,'Observations : '+notes,y,10)+2;
-  y+=sp(doc);doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...GREY);
-  {const l=doc.splitTextToSize(t('Méthode : coût au mètre = prix de la bobine / longueur. Mètres déposés par palette = film déposé mesuré sur la palette / poids d\'un mètre de film (poids net de la bobine, mandrin déduit, divisé par sa longueur). Coût par palette = mètres déposés x coût au mètre. Pré-étirage estimé = (nombre de tours x périmètre de la palette de '+fmt(num('l_wp'),2)+' x '+fmt(num('l_lp'),2)+' m) / mètres déposés - 1.'+(L.an>0?' Base annuelle : '+fmt(num('l_pj'))+' palettes par jour sur '+fmt(num('l_ja'))+' jours.':'')+' Valeurs indicatives, issues de l\'essai.'),W-2*M);if(y+l.length*3.6>279){doc.addPage();pageHead(doc,cli,'Coût du film au mètre linéaire');y=40;doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...GREY)}doc.text(l,M,y)}
+  y+=sp(doc);doc.setFont('helvetica','normal');doc.setFontSize(8.3);doc.setTextColor(...GREY);
+  {const l=doc.splitTextToSize(t('Méthode : coût au mètre = prix de la bobine / longueur ; coût au mètre carré = coût au mètre / laize. Longueur consommée : '+(A.mMes&&(!two||B.mMes)?'mesurée lors de l\'essai':'estimée à partir de la pesée du film utilisé lors de l\'essai, rapportée au poids linéaire du film (poids net de la bobine, mandrin déduit, divisé par sa longueur)')+'. Coût par palette = mètres consommés x coût au mètre'+(A.app||B.app?', ou prix par application pour une solution valorisée par application':'')+'. Pré-étirage estimé = (nombre de tours x périmètre de la palette de '+fmt(num('l_wp'),2)+' x '+fmt(num('l_lp'),2)+' m) / mètres consommés - 1.'+(L.an>0?' Base annuelle : '+fmt(num('l_pj'))+' palettes par jour sur '+fmt(num('l_ja'))+' jours.':'')+' Valeurs indicatives, issues de l\'essai.'),W-2*M);
+    if(y+l.length*3.5>279){doc.addPage();pageHead(doc,cli,'Coût réel d\'utilisation du film');y=40;doc.setFont('helvetica','normal');doc.setFontSize(8.3);doc.setTextColor(...GREY)}doc.text(l,M,y)}
   footAll(doc);
   const safe=cli.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'')||'Client';
-  return {doc,name:'KL_Groupe_Cout_au_metre_'+safe+(dv?'_'+dv:'')+'.pdf'};
+  return {doc,name:'KL_Groupe_Cout_utilisation_'+safe+(dv?'_'+dv:'')+'.pdf'};
 }
 function buildImpactPdf(p){needData(p);return adaptive(()=>buildImpactCore(p))}
 function buildImpactCore(p){
@@ -1734,7 +1766,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261126-004500';
+window.APP_VERSION='20261126-010500';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
