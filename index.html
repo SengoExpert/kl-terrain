@@ -139,6 +139,7 @@ select{appearance:auto}
   <div class="tabs" role="tablist">
     <button role="tab" id="tab-film" aria-selected="true" data-v="film">Film</button>
     <button role="tab" id="tab-housse" aria-selected="false" data-v="housse">Housse</button>
+    <button role="tab" id="tab-lin" aria-selected="false" data-v="lin">Au mètre</button>
     <button role="tab" id="tab-audit" aria-selected="false" data-v="audit">Audit</button>
     <button role="tab" id="tab-mach" aria-selected="false" data-v="mach">Machine</button>
     <button role="tab" id="tab-ctrl" aria-selected="false" data-v="ctrl">Contrôle</button>
@@ -281,6 +282,37 @@ select{appearance:auto}
 </section>
 
 <!-- ============ AUDIT ============ -->
+<!-- ============ AU METRE (films techniques, film manuel) ============ -->
+<section id="v-lin" class="view" hidden>
+  <div class="card"><h2>Client</h2><div class="grid wide">
+    <label for="l_cli">Société</label><input type="text" id="l_cli" placeholder="Nom du client">
+    <label for="l_int">Interlocuteur</label><input type="text" id="l_int">
+    <label for="l_date">Date</label><input type="date" id="l_date">
+  </div><p class="note">Pour les films techniques ou manuels : le calcul se fait en mètres linéaires et en coût par palette, sans jamais afficher de prix au kilo.</p></div>
+  <div class="card"><h2>Films au mètre</h2><div class="grid">
+    <span></span><span class="colh">Film 1</span><span class="colh kl">Film 2 (facultatif)</span>
+    <label>Désignation</label><input id="l_n1" type="text" placeholder="Film actuel"><input id="l_n2" type="text" placeholder="Film proposé">
+    <label>Poids brut bobine (kg)</label><input id="l_pb1" inputmode="decimal" placeholder=""><input id="l_pb2" inputmode="decimal" placeholder="">
+    <label>Poids mandrin (kg)</label><input id="l_m1" inputmode="decimal" placeholder=""><input id="l_m2" inputmode="decimal" placeholder="">
+    <label>Longueur de la bobine (m)</label><input id="l_len1" inputmode="decimal" placeholder=""><input id="l_len2" inputmode="decimal" placeholder="">
+    <label>Laize (mm)</label><input id="l_lz1" inputmode="decimal" placeholder=""><input id="l_lz2" inputmode="decimal" placeholder="">
+    <label>Prix de la bobine (€ HT)</label><input id="l_pr1" inputmode="decimal" placeholder=""><input id="l_pr2" inputmode="decimal" placeholder="">
+    <label>Bobines par palette (livraison)</label><input id="l_bp1" inputmode="decimal" placeholder=""><input id="l_bp2" inputmode="decimal" placeholder="">
+    <label>Poids déposé par palette (g)</label><input id="l_d1" inputmode="decimal" placeholder="mesuré"><input id="l_d2" inputmode="decimal" placeholder="mesuré">
+    <label>Nombre de tours</label><input id="l_t1" inputmode="decimal" placeholder=""><input id="l_t2" inputmode="decimal" placeholder="">
+  </div></div>
+  <div class="card"><h2>Palette et volume</h2><div class="grid two">
+    <label for="l_wp">Largeur palette (m)</label><input id="l_wp" inputmode="decimal" value="0,8">
+    <label for="l_lp">Longueur palette (m)</label><input id="l_lp" inputmode="decimal" value="1,2">
+    <label for="l_pj">Palettes par jour (facultatif)</label><input id="l_pj" inputmode="decimal">
+    <label for="l_ja">Jours travaillés par an</label><input id="l_ja" inputmode="decimal" value="220">
+  </div></div>
+  <div class="card"><h2>Résultats</h2><div class="tiles" id="l_res"></div></div>
+  <div class="card"><h2>Observations</h2><textarea id="l_notes" class="obs" placeholder="Contexte du test : produit emballé chaud, condensation, tenue…"></textarea></div>
+  <button class="btn" id="l_pdf">Fiche coût au mètre (PDF)</button>
+  <p class="msg" id="l_msg"></p>
+</section>
+
 <section id="v-audit" class="view" hidden>
   <div class="card"><h2>Audit sur site</h2>
     <div class="grid two">
@@ -312,10 +344,11 @@ select{appearance:auto}
 
 <!-- ============ MACHINE ============ -->
 <section id="v-mach" class="view" hidden>
-  <div class="card"><h2>Machine proposée</h2><div class="grid wide">
+  <div class="card"><h2>Investissement : équipement proposé</h2><div class="grid wide">
     <label for="m_cli">Client</label><input type="text" id="m_cli" placeholder="Repris de l'essai si vide">
     <label for="m_nom">Machine</label><input type="text" id="m_nom" placeholder="Ex. banderoleuse semi-automatique">
-  </div><div class="grid two">
+  </div><label for="m_obj" class="note">Motif de l'investissement et amélioration attendue (facultatif)</label><textarea id="m_obj" class="obs" placeholder="Ex. passer le pré-étirage de 100 % à 250 % pour réduire le film déposé"></textarea>
+  <label for="m_cont" class="note">Contraintes techniques (facultatif)</label><textarea id="m_cont" class="obs" placeholder="Ex. hauteur de palette, cadence, alimentation électrique"></textarea><div class="grid two">
     <label for="m_qty">Nombre de machines</label><input id="m_qty" inputmode="decimal" value="1">
     <label for="m_pu">Prix unitaire HT (€)</label><input id="m_pu" inputmode="decimal" value="12000">
     <label for="m_maint">Maintenance par machine (€ HT / an)</label><input id="m_maint" inputmode="decimal" value="450">
@@ -323,13 +356,13 @@ select{appearance:auto}
 
   <div class="card"><h2>Économies qui financent la machine</h2><div class="grid two">
     <label for="m_src">Source des économies</label>
-    <select id="m_src"><option value="f">Essai film</option><option value="h">Essai housse</option><option value="m">Montant saisi</option></select>
+    <select id="m_src"><option value="f">Essai film</option><option value="h">Essai housse</option><option value="m">Montant saisi (sans essai)</option></select>
     <label for="m_man">Économie mensuelle saisie (€)</label><input id="m_man" inputmode="decimal" value="1000">
   </div><p class="note" id="m_srcnote"></p></div>
 
   <div class="card"><h2>Achat ou location LOCAM</h2>
     <div class="tbl"><table id="m_tab"></table></div>
-    <p class="note">Loyers maintenance incluse. Autofinancement : part du loyer couverte par les économies.</p>
+    <p class="note">Calculs sur le scénario de référence (économies sur le film seul). Loyers maintenance incluse. Autofinancement : part du loyer couverte par les économies. Effort : ce que le client finance réellement chaque mois. Trésorerie préservée : les économies couvrent le loyer.</p>
   </div>
 
   <div class="card"><h2>Projection sur 5 ans</h2><div class="grid two">
@@ -457,7 +490,7 @@ function calc(p){
 function projRows(gBud,gRep,g,inv,loy,months,maintAn){
   const rows=[];let cum=0;
   for(let y=1;y<=5;y++){
-    const film=gBud*Math.pow(1+g,y-1),mois=Math.min(12,Math.max(0,months-12*(y-1))),cost=(y===1?inv:0)+loy*mois+maintAn,net=film+gRep-cost;cum+=net;
+    const film=gBud*Math.pow(1+g,y-1),mois=Math.min(12,Math.max(0,months-12*(y-1))),cost=(y===1?inv:0)+loy*mois+maintAn*(12-mois)/12,net=film+gRep-cost;cum+=net;
     rows.push({y,film,rep:gRep,cost,net,cum});
   }
   return rows;
@@ -470,15 +503,20 @@ function proj(p,r){ /* sans hausse de prix : volumes et prix constants */
 const DUR=[24,36,48,60];
 function mcalc(){
   const qty=num('m_qty'),pu=num('m_pu'),val=qty*pu,maint=num('m_maint')*qty,src=$('m_src').value;
-  let gBud,gRep,g,cli,label,r=null;
-  if(src==='m'){const e=num('m_man');gBud=e*12;gRep=0;g=0;cli='';label='montant saisi'}
-  else{r=calc(src);gBud=r.gBud;gRep=r.gRep;g=0;cli=$(src+'_cli').value.trim();label=src==='f'?'essai film':'essai housse'}
-  const eco=(gBud+gRep)/12;
-  const loc=DUR.map(n=>{const coef=num('m_c'+n)/100,loyer=val*coef+maint/12;return {n,coef,loyer,tri:loyer*3,total:loyer*n,net:eco-loyer,auto:loyer?eco/loyer:NaN}});
-  const achatNet=eco-maint/12,roi=val>0&&achatNet>0?val/achatNet:NaN;
+  let gBud,gRep,g=0,cli,label,r=null;
+  if(src==='m'){const e=num('m_man');gBud=e*12;gRep=0;cli='';label='montant saisi'}
+  else{r=calc(src);gBud=Math.round(r.gBud);gRep=Math.round(r.gRep);cli=$(src+'_cli').value.trim();label=src==='f'?'essai film':'essai housse'}
+  const mat=src==='h'?'housse':'film',hasRep=gRep>0;
+  /* scénario 1 (référence, prudent) : économies sur le film seul. Scénario 2 (indicatif) : film + éco-contribution REP potentielle */
+  const eco=gBud/12,eco2=(gBud+gRep)/12;
+  const loc=DUR.map(n=>{const coef=num('m_c'+n)/100,loyer=val*coef+maint/12;
+    return {n,coef,loyer,tri:loyer*3,total:loyer*n,tco:loyer*n+maint*Math.max(0,60-n)/12,net:eco-loyer,net2:eco2-loyer,auto:loyer?eco/loyer:NaN,auto2:loyer?eco2/loyer:NaN,effort:Math.max(0,loyer-eco),ok:eco>=loyer}});
+  const achatNet=eco-maint/12,roi=val>0&&achatNet>0?val/achatNet:NaN,achatNet2=eco2-maint/12,roi2=val>0&&achatNet2>0?val/achatNet2:NaN,tcoAchat=val+maint*5;
   const dur=$('m_dur').value,sel=dur==='achat'?null:loc.find(o=>String(o.n)===dur);
-  const rows=sel?projRows(gBud,gRep,g,0,sel.loyer,sel.n,0):projRows(gBud,gRep,g,val,0,0,maint);
-  return {qty,pu,val,maint,src,label,cli:$('m_cli').value.trim()||cli,nom:$('m_nom').value.trim(),eco,gBud,gRep,g,loc,achatNet,roi,dur,sel,rows,r};
+  const mk=rep=>sel?projRows(gBud,rep,g,0,sel.loyer,sel.n,maint):projRows(gBud,rep,g,val,0,0,maint);
+  const rows=mk(0),rows2=mk(gRep);
+  return {qty,pu,val,maint,src,mat,label,cli:$('m_cli').value.trim()||cli,nom:$('m_nom').value.trim(),obj:($('m_obj')||{value:''}).value.trim(),cont:($('m_cont')||{value:''}).value.trim(),
+    eco,eco2,hasRep,gBud,gRep,g,loc,achatNet,achatNet2,roi,roi2,tcoAchat,dur,sel,rows,rows2,r};
 }
 function chartSvg(rows){
   const W=340,Hh=170,top=22,bot=28,left=8,right=8,vals=rows.map(o=>o.cum),mx=Math.max(0,...vals),mn=Math.min(0,...vals),span=(mx-mn)||1;
@@ -494,22 +532,44 @@ function chartSvg(rows){
   return out+`<line class="axis" x1="${left}" x2="${W-right}" y1="${y0.toFixed(1)}" y2="${y0.toFixed(1)}"></line></svg>`;
 }
 const tile=(v,l,hero)=>`<div class="tile${hero?' hero':''}"><b>${v}</b><span>${l}</span></div>`;
+/* ---- calcul au mètre linéaire ---- */
+function lcalc(){
+  const has=id=>String($(id).value).trim()!=='',per=2*(num('l_wp')+num('l_lp')),an=num('l_pj')*num('l_ja');
+  const F=[1,2].map(n=>{const k=x=>'l_'+x+n,o={n,name:$(k('n')).value.trim()||(n===1?'Film actuel':'Film proposé')};
+    o.len=num(k('len'));o.pr=num(k('pr'));o.net=(num(k('pb'))-num(k('m')))*1000;o.lz=num(k('lz'));o.bp=num(k('bp'));o.d=num(k('d'));o.t=num(k('t'));
+    o.ok=o.len>0&&o.pr>0;o.gm=o.len>0&&o.net>0?o.net/o.len:NaN;o.cm=o.len>0?o.pr/o.len:NaN;
+    o.mPal=o.d>0&&o.gm>0?o.d/o.gm:NaN;o.cPal=o.mPal*o.cm;o.palBob=o.mPal>0?o.len/o.mPal:NaN;
+    o.pre=o.t>0&&o.mPal>0?(o.t*per/o.mPal-1)*100:NaN;o.cAn=an>0?o.cPal*an:NaN;o.mAn=an>0?o.mPal*an:NaN;return o});
+  const [A,B]=F,two=B.ok&&isFinite(B.cPal);
+  return {A,B,two,an,per,gPal:two?A.cPal-B.cPal:NaN,gAn:two&&an>0?(A.cPal-B.cPal)*an:NaN,gM:two?A.mPal-B.mPal:NaN};
+}
+function renderLin(){
+  const L=lcalc(),f=(v,d=0,u='')=>isFinite(v)?fmt(v,d)+u:'–';
+  const col=o=>tile(f(o.cPal,2,' €'),'par palette, '+esc(o.name),true)+tile(f(o.cm,3,' €'),'le mètre linéaire')+tile(f(o.mPal,1,' m'),'de film déposé par palette')+
+    tile(f(o.palBob,0),'palettes par bobine')+(isFinite(o.pre)?tile(f(o.pre,0,' %'),'pré-étirage estimé'):'')+(isFinite(o.cAn)?tile(f(o.cAn,0,' €'),'par an'):'');
+  let h=col(L.A);
+  if(L.two){h+=col(L.B)+tile((L.gPal>=0?'':'+')+f(Math.abs(L.gPal),2,' €'),(L.gPal>=0?'économisés':'en plus')+' par palette avec '+esc(L.B.name),true)+(isFinite(L.gAn)?tile(f(Math.abs(L.gAn),0,' €'),(L.gAn>=0?'d\'économie':'de surcoût')+' par an'):'')}
+  $('l_res').innerHTML=h;
+}
 function renderMachine(){
   const m=mcalc();
   $('m_val').innerHTML=tile(fmt(m.val)+' € HT','valeur globale'+(m.qty>1?' pour '+fmt(m.qty)+' machines':''),true)+
-    tile(fmt(m.eco)+' €','d\'économie par mois ('+m.label+')')+
-    tile(isFinite(m.roi)?fmt(m.roi,1)+' mois':'non amorti','pour amortir un achat comptant');
+    tile(fmt(m.eco)+' €','d\'économie par mois sur le '+m.mat+' (scénario 1, référence)')+
+    (m.hasRep?tile(fmt(m.eco2)+' €','par mois avec la REP potentielle (scénario 2, indicatif)'):'')+
+    tile(isFinite(m.roi)?fmt(m.roi,1)+' mois':'non amorti','pour amortir un achat comptant (scénario 1)');
   $('m_man').disabled=m.src!=='m';
-  $('m_srcnote').textContent=m.src==='m'?'Saisissez l\'économie mensuelle attendue.':'Économies '+(m.src==='f'?'film':'housse')+' et REP reprises de l\'onglet '+(m.src==='f'?'Film':'Housse')+'.';
+  $('m_srcnote').textContent=m.src==='m'?'Saisissez l\'économie mensuelle attendue : le module fonctionne aussi sans essai.':'Économies reprises de l\'onglet '+(m.src==='f'?'Film':'Housse')+'. Référence : '+m.mat+' seul ; la REP potentielle est montrée à part.';
   const cls=v=>v>=0?'pos':'neg';
-  let h='<thead><tr><th>Formule</th><th>Loyer / mois</th><th>Loyer / trim.</th><th>Coût total</th><th>Net / mois</th><th>Autofin.</th></tr></thead><tbody>';
-  h+=`<tr class="${m.dur==='achat'?'sel':''}"><td>Achat</td><td>–</td><td>–</td><td>${fmt(m.val)} €</td><td class="${cls(m.achatNet)}">${fmt(m.achatNet)} €</td><td>${isFinite(m.roi)?fmt(m.roi,1)+' mois':'–'}</td></tr>`;
-  m.loc.forEach(o=>{h+=`<tr class="${String(o.n)===m.dur?'sel':''}"><td>${o.n} mois</td><td>${fmt(o.loyer,2)} €</td><td>${fmt(o.tri,2)} €</td><td>${fmt(o.total)} €</td><td class="${cls(o.net)}">${fmt(o.net)} €</td><td>${fmt(o.auto*100)} %</td></tr>`});
+  let h='<thead><tr><th>Formule</th><th>Loyer / mois</th><th>Net / mois</th><th>Autofin.</th><th>Effort / mois</th></tr></thead><tbody>';
+  h+=`<tr class="${m.dur==='achat'?'sel':''}"><td>Achat</td><td>–</td><td class="${cls(m.achatNet)}">${fmt(m.achatNet)} €</td><td>${isFinite(m.roi)?fmt(m.roi,1)+' mois':'–'}</td><td>${fmt(m.val)} € une fois</td></tr>`;
+  m.loc.forEach(o=>{h+=`<tr class="${String(o.n)===m.dur?'sel':''}"><td>${o.n} mois</td><td>${fmt(o.loyer,2)} €</td><td class="${cls(o.net)}">${fmt(o.net)} €</td><td>${fmt(o.auto*100)} %</td><td>${o.ok?'0 € ✓':fmt(o.effort)+' €'}</td></tr>`});
   $('m_tab').innerHTML=h+'</tbody>';
-  const R=m.rows,s=m.sel;
-  $('m_roi').innerHTML=tile(fmt(R[4].cum)+' €','de gain net cumulé sur 5 ans, '+(s?'loyers':'achat et maintenance')+' déduits',true)+
-    (s?tile(fmt(s.net)+' €','de gain net par mois pendant la location')+tile(fmt(s.auto*100)+' %','du loyer couvert par les économies')
-      :tile(isFinite(m.roi)?fmt(m.roi,1)+' mois':'non amorti','de retour sur investissement')+tile(fmt(m.achatNet)+' €','de gain net par mois après amortissement'));
+  const R=m.rows,R2=m.rows2,s=m.sel;
+  $('m_roi').innerHTML=tile(fmt(R[4].cum)+' €','de gain net cumulé sur 5 ans, film seul, '+(s?'loyers':'achat et maintenance')+' déduits',true)+
+    (m.hasRep?tile(fmt(R2[4].cum)+' €','avec la REP potentielle (scénario 2)'):'')+
+    tile(fmt(R[2].cum)+' €','de gain net cumulé sur 3 ans (scénario 1)')+
+    (s?tile(s.ok?'Préservée':fmt(s.effort)+' € / mois','trésorerie pendant la location ('+fmt(s.auto*100)+' % du loyer couvert)')
+      :tile(isFinite(m.roi)?fmt(m.roi,1)+' mois':'non amorti','de retour sur investissement'));
   $('m_chart').innerHTML=chartSvg(R);
 }
 function render(){
@@ -553,6 +613,7 @@ function render(){
     $(p+'_chart').innerHTML=chartSvg(P.rowsFilm);
   });
   renderMachine();
+  try{renderLin()}catch(e){}
   if(typeof syncWeights==='function'&&$('a_items').children.length)syncWeights();
   const C=ctrl();
   $('c_res1').innerHTML=tile(fmt(C.eR,1)+' µ','épaisseur réelle pour la longueur annoncée')+tile(fmt(C.lR)+' m','longueur réelle pour l\'épaisseur annoncée');
@@ -586,7 +647,7 @@ Object.entries(LINK).forEach(([src,ts])=>{const el=$(src);
 $('c_sync').addEventListener('click',()=>{Object.entries(LINK).forEach(([src,ts])=>{const v=$(src).value;if(String(v).trim()==='')return;ts.forEach(([tg,f])=>{const nv=f?f(v):v;$(tg).value=nv;$(tg).dataset.auto=nv})});render();save()});
 inputs.forEach(i=>{i.addEventListener('input',()=>{render();save()});if(i.tagName==='SELECT'||i.type==='checkbox')i.addEventListener('change',()=>{render();save()})});
 $('reset').addEventListener('click',()=>{inputs.forEach(i=>{if(i.type==='checkbox')i.checked=false;else i.value=defaults[i.id]});setDates();render();save()});
-function setDates(){const t=new Date().toISOString().slice(0,10);['f_date','h_date'].forEach(id=>{if(!$(id).value)$(id).value=t})}
+function setDates(){const t=new Date().toISOString().slice(0,10);['f_date','h_date','l_date'].forEach(id=>{if(!$(id).value)$(id).value=t})}
 /* ---- cadre Observations : s'adapte au texte, bouton pour l'agrandir ou le réduire ---- */
 function fitObs(el){const big=el.dataset.big==='1';el.style.height='auto';const h=el.scrollHeight+4;
   el.style.height=(big?Math.max(h,Math.round(window.innerHeight*0.6)):Math.min(Math.max(h,120),220))+'px'}
@@ -1054,50 +1115,96 @@ function drawProj(doc,y,rows,lab1,costLab,opt={}){
   return doc.lastAutoTable.finalY+8;
 }
 
-function buildMachinePdf(){
-  const m=mcalc(),{jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'}),W=210,M=16;
+function buildMachinePdf(){return adaptive(buildMachineCore)}
+function buildMachineCore(){
+  const m=mcalc(),doc=layDoc(),W=210,M=16;
   const cli=m.cli||'Client',nom=m.nom||'Machine proposée',today=new Date().toLocaleDateString('fr-FR');
   const header=()=>pageHead(doc,cli,'Projet d\'investissement : '+nom);
-  const footer=()=>{};
-  const kpis=(y,items)=>KPI(doc,y,items,30,17);
-  const tbl={styles:{font:'helvetica',fontSize:9.5,textColor:DARK,lineColor:[217,226,218],cellPadding:2.3,halign:'right'},headStyles:{fillColor:GREEN,textColor:255,fontStyle:'bold',halign:'center'},alternateRowStyles:{fillColor:[246,250,246]}};
-
+  const tbl={styles:{font:'helvetica',fontSize:9,textColor:DARK,lineColor:[217,226,218],cellPadding:2,halign:'right'},headStyles:{fillColor:GREEN,textColor:255,fontStyle:'bold',halign:'center'},alternateRowStyles:{fillColor:[246,250,246]}};
+  const S1='film seul',fe=v=>t(fmt(v)+' €');
   /* page 1 */
-  coverHead(doc,cli,'PROJET D\'INVESTISSEMENT  |  AUDIT OPTIM\'PACK');
+  coverHead(doc,cli,'INVESTISSEMENT ET FINANCEMENT  |  AUDIT OPTIM\'PACK');
   let y=coverTitle(doc,'Investissement machine : '+nom,60);
   y=infoRow(doc,y,[['Machine',nom],['Nombre',fmt(m.qty)],['Valeur globale HT',fmt(m.val)+' €'],['Proposition du',today]]);
+  if(m.obj||m.cont){y=H2(doc,'Identification du besoin',y)+1;
+    if(m.obj)y=PARA(doc,'Motif et amélioration attendue : '+m.obj,y,9.8)-1;
+    if(m.cont)y=PARA(doc,'Contraintes techniques : '+m.cont,y,9.8)-1;y+=2}
   AT(doc,Object.assign({startY:y,margin:{left:M,right:M},theme:'plain',
-    body:[['Prix unitaire HT',t(fmt(m.pu)+' €')],['Maintenance préventive',t(fmt(m.maint)+' € HT par an, incluse dans les loyers')],['Économies prises en compte',t(fmt(m.eco)+' € par mois ('+m.label+')')]]},
-    {styles:{font:'helvetica',fontSize:10.5,textColor:DARK,cellPadding:2},columnStyles:{0:{fontStyle:'bold',cellWidth:62,textColor:GREY}}}));
-  y=doc.lastAutoTable.finalY+8;
+    body:[['Prix unitaire HT',t(fmt(m.pu)+' €')],['Maintenance préventive',t(fmt(m.maint)+' € HT par an, incluse dans les loyers')],
+      ['Économies retenues (scénario 1)',t(fmt(m.eco)+' € par mois, soit '+fmt(m.gBud)+' € par an ('+(m.src==='m'?'montant saisi':'économies sur le '+m.mat+' seul, '+m.label)+')')]]
+      .concat(m.hasRep?[['Scénario 2, indicatif',t(fmt(m.eco2)+' € par mois avec l\'éco-contribution REP potentielle ('+fmt(m.gBud+m.gRep)+' € par an)')]]:[])},
+    {styles:{font:'helvetica',fontSize:10,textColor:DARK,cellPadding:1.8},columnStyles:{0:{fontStyle:'bold',cellWidth:62,textColor:GREY}}}));
+  y=doc.lastAutoTable.finalY+7;
   const best=m.loc.reduce((a,o)=>o.net>a.net?o:a,m.loc[0]);
-  y=kpis(y,[[fmt(m.val)+' €','valeur globale HT'],[isFinite(m.roi)?fmt(m.roi,1)+' mois':'Non amorti','pour amortir un achat comptant'],[fmt(best.auto*100)+' %','du loyer couvert par les économies en '+best.n+' mois']]);y+=10;
+  y=KPI(doc,y,[[fmt(m.val)+' €','valeur globale HT'],[isFinite(m.roi)?fmt(m.roi,1)+' mois':'Non amorti','pour amortir un achat comptant ('+S1+')'],[fmt(best.auto*100)+' %','du loyer couvert par les économies en '+best.n+' mois ('+S1+')']],28,19)+8;
   doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(...NUIT);doc.text('Achat ou location LOCAM',M,y);y+=3;
   AT(doc,Object.assign({startY:y,margin:{left:M,right:M},theme:'grid',
-    head:[['Formule','Loyer mensuel','Loyer trimestriel','Coût total','Gain net / mois','Autofinancement']],
-    body:[['Achat comptant','-','-',t(fmt(m.val)+' €'),t(fmt(m.achatNet)+' €'),t(isFinite(m.roi)?'amorti en '+fmt(m.roi,1)+' mois':'-')]]
-      .concat(m.loc.map(o=>[o.n+' mois',t(fmt(o.loyer,2)+' €'),t(fmt(o.tri,2)+' €'),t(fmt(o.total)+' €'),t(fmt(o.net)+' €'),t(fmt(o.auto*100)+' %')]))},
-    tbl,{columnStyles:{0:{halign:'left',fontStyle:'bold'}}}));
-  y=doc.lastAutoTable.finalY+6;
-  doc.setFontSize(8.5);doc.setTextColor(...GREY);
-  doc.text(doc.splitTextToSize(t('Loyers HT, maintenance incluse (une intervention préventive par an). Loyers indicatifs, sans valeur contractuelle, sous réserve d\'acceptation du dossier par LOCAM. Gain net par mois = économies mensuelles - loyer (ou maintenance pour l\'achat).'),W-2*M),M,y);
-  footer(1);
-
-  /* page 2 */
+    head:[['Formule','Loyer mensuel','Gain net / mois','Autofinancement','Effort mensuel réel','Trésorerie','Coût total sur 5 ans']],
+    body:[['Achat comptant','-',fe(m.achatNet),t(isFinite(m.roi)?'amorti en '+fmt(m.roi,1)+' mois':'-'),t(fmt(m.val)+' € à l\'achat'),'Sortie initiale',fe(m.tcoAchat)]]
+      .concat(m.loc.map(o=>[o.n+' mois',t(fmt(o.loyer,2)+' €'),fe(o.net),t(fmt(o.auto*100)+' %'+(m.hasRep?' ('+fmt(o.auto2*100)+' %)':'')),o.ok?'0 €':fe(o.effort),o.ok?'Préservée':'Effort',fe(o.tco)]))},
+    tbl,{columnStyles:{0:{halign:'left',fontStyle:'bold'},5:{halign:'center'}},didParseCell:d=>{if(d.section==='body'&&d.column.index===5){const v=String(d.cell.raw);d.cell.styles.textColor=v==='Préservée'?GREEN:v==='Effort'?[180,83,9]:GREY;d.cell.styles.fontStyle='bold'}}}));
+  y=doc.lastAutoTable.finalY+5;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.3);doc.setTextColor(...GREY);
+  {const l=doc.splitTextToSize(t('Calculs sur le scénario 1 (économies sur le '+m.mat+' seul)'+(m.hasRep?' ; entre parenthèses, l\'autofinancement avec la REP potentielle (scénario 2, indicatif)':'')+'. Effort mensuel réel : part du loyer non couverte par les économies. Trésorerie préservée : les économies couvrent le loyer, l\'investissement se fait sans dégradation de trésorerie. Coût total sur 5 ans : achat + maintenance, ou loyers (maintenance incluse) + maintenance après la location. Loyers HT indicatifs, sans valeur contractuelle, sous réserve d\'acceptation du dossier par LOCAM.'),W-2*M);doc.text(l,M,y);y+=l.length*3.6}
+  /* page 2 : projection en deux scénarios */
   doc.addPage();header();
-  const fl=m.sel?'location LOCAM '+m.sel.n+' mois':'achat comptant';
+  const fl=m.sel?'location LOCAM '+m.sel.n+' mois':'achat comptant',R=m.rows,R2=m.rows2;
   y=H1(doc,t('Projection sur 5 ans : '+fl));
-  y=kpis(y,m.sel?[[fmt(m.rows[4].cum)+' €','de gain net cumulé sur 5 ans'],[fmt(m.sel.loyer,2)+' €','de loyer mensuel'],[fmt(m.sel.net)+' €','de gain net par mois pendant la location']]
-    :[[fmt(m.rows[4].cum)+' €','de gain net cumulé sur 5 ans'],[isFinite(m.roi)?fmt(m.roi,1)+' mois':'Non amorti','de retour sur investissement'],[fmt(m.achatNet)+' €','de gain net par mois après amortissement']]);
-  y+=12;
-  y=drawProj(doc,y,m.rows,m.src==='h'?'Économie housse':m.src==='f'?'Économie film':'Économies',m.sel?'Loyers':'Achat et maintenance');
-  doc.setFontSize(8.5);doc.setTextColor(...GREY);
-  doc.text(doc.splitTextToSize(t('Hypothèses : économies de l\''+m.label+', volumes et prix constants, éco-contribution REP constante'+(m.sel?', loyers pendant '+m.sel.n+' mois puis machine sans loyer':', achat payé la première année, maintenance de '+fmt(m.maint)+' € par an')+'. Projection indicative.'),W-2*M),M,Math.max(y,266));
+  y=KPI(doc,y,[[fmt(R[4].cum)+' €','de gain net cumulé sur 5 ans ('+S1+')'],[fmt(R[2].cum)+' €','de gain net cumulé sur 3 ans ('+S1+')'],
+    m.hasRep?[fmt(R2[4].cum)+' €','sur 5 ans avec la REP potentielle (scénario 2)']:(m.sel?[m.sel.ok?'Préservée':fmt(m.sel.effort)+' €','trésorerie pendant la location']:[isFinite(m.roi)?fmt(m.roi,1)+' mois':'Non amorti','de retour sur investissement'])],28,19)+9;
+  y=drawProj(doc,y,R,'',null,{noTable:true,title:'Gain net cumulé, scénario 1 ('+S1+')'});
+  AT(doc,Object.assign({startY:y,margin:{left:M,right:M},theme:'grid',
+    head:[['Année','Économie '+m.mat,m.sel?'Loyers et maintenance':'Achat et maintenance','Gain net (scénario 1)','Cumul scénario 1'].concat(m.hasRep?['REP potentielle','Cumul scénario 2']:[])],
+    body:R.map((o,i)=>[String(o.y),fe(o.film),t(o.cost?'-'+fmt(o.cost)+' €':'-'),fe(o.net),fe(o.cum)].concat(m.hasRep?[fe(R2[i].rep),fe(R2[i].cum)]:[]))},
+    tbl,{columnStyles:{0:{halign:'center'},4:{fontStyle:'bold',textColor:GREEN},6:{textColor:GREY}}}));
+  y=doc.lastAutoTable.finalY+6;
+  y+=sp(doc);doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...NUIT);doc.text('Hypothèses retenues',M,y);y+=5;
+  doc.setFont('helvetica','normal');doc.setFontSize(9.2);doc.setTextColor(...DARK);
+  ['Scénario 1, prudent et de référence : économies sur le '+m.mat+' seul ('+(m.src==='m'?'montant saisi':m.label)+').',
+   m.hasRep?'Scénario 2, indicatif : ajoute l\'éco-contribution REP potentielle, qui dépend du statut de l\'entreprise au regard de la REP.':null,
+   'Volumes et prix constants sur cinq ans.',
+   m.sel?'Loyers pendant '+m.sel.n+' mois (maintenance incluse), puis maintenance de '+fmt(m.maint)+' € HT par an.':'Achat payé la première année, maintenance de '+fmt(m.maint)+' € HT par an.'].filter(Boolean)
+   .forEach(h=>{const l=doc.splitTextToSize(t(h),W-2*M-5);doc.setFillColor(...GREEN);doc.circle(M+1.5,y-1.1,.7,'F');doc.text(l,M+5,y);y+=l.length*4.4+0.4});
+  doc.setFont('helvetica','italic');doc.setFontSize(8.8);doc.setTextColor(...GREY);doc.text(t('Projection indicative : elle ne constitue pas une économie garantie.'),M,y+1.5);
   footAll(doc);
   const safe=cli.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'')||'Client';
   return {doc,name:'KL_Groupe_Investissement_'+safe+'_'+new Date().toISOString().slice(0,10)+'.pdf'};
 }
 
+function buildLinPdf(){
+  const L=lcalc();if(!L.A.ok||!isFinite(L.A.cPal))throw new Error('renseignez d\'abord, pour le film 1, la longueur, le prix et le poids de la bobine, le mandrin et le poids déposé par palette');
+  return adaptive(()=>buildLinCore(L))}
+function buildLinCore(L){
+  const doc=layDoc(),W=210,M=16,A=L.A,B=L.B,two=L.two;
+  const cli=$('l_cli').value.trim()||'Client',dv=$('l_date').value,dt=dv?new Date(dv+'T12:00').toLocaleDateString('fr-FR'):new Date().toLocaleDateString('fr-FR');
+  const f=(v,d=0,u='')=>isFinite(v)?fmt(v,d)+u:'-',sg=(v,d=0,u='')=>isFinite(v)?(v>0?'+':'')+fmt(v,d)+u:'';
+  coverHead(doc,cli,'AUDIT OPTIM\'PACK  |  KL GROUPE');
+  let y;{doc.setTextColor(...NUIT);doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text(t('COÛT DU FILM AU MÈTRE LINÉAIRE'),M,60);
+    doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(...DARK);doc.text(t(two?'Comparaison de deux films en mètres déposés et en coût par palette':'Analyse en mètres déposés et en coût par palette'),M,67);
+    doc.setFillColor(...GREEN);doc.rect(M,70.5,18,1.2,'F');y=80}
+  y=infoRow(doc,y,[['Interlocuteur',$('l_int').value.trim()],['Date',dt],['Volume',L.an>0?fmt(L.an)+' palettes / an':'-'],['Film'+(two?'s':''),two?A.name+' / '+B.name:A.name]]);
+  y=PARA(doc,'Pour un film technique, le bon indicateur n\'est pas le prix de la matière mais ce que coûte réellement chaque palette filmée, à partir du film déposé lors de l\'essai.',y-2,9.8)+1;
+  y=KPI(doc,y,two?[[f(L.gPal,2,' €'),'économisés par palette avec '+B.name],[isFinite(L.gAn)?f(L.gAn,0,' €'):f(B.cPal,2,' €'),isFinite(L.gAn)?'d\'économie par an':'par palette avec '+B.name],[sg(-L.gM,1,' m'),'de film déposé par palette']]
+    :[[f(A.cPal,2,' €'),'par palette filmée'],[f(A.cm,3,' €'),'le mètre linéaire'],[f(A.mPal,1,' m'),'de film déposé par palette']],25,18)+8;
+  const rows=[['Longueur de la bobine',f(A.len,0,' m'),f(B.len,0,' m'),sg(B.len-A.len,0,' m')],['Laize',f(A.lz,0,' mm'),f(B.lz,0,' mm'),''],['Prix de la bobine HT',f(A.pr,2,' €'),f(B.pr,2,' €'),sg(B.pr-A.pr,2,' €')],
+    ['Coût au mètre linéaire',f(A.cm,3,' €'),f(B.cm,3,' €'),sg(B.cm-A.cm,3,' €')],['Mètres déposés par palette',f(A.mPal,1,' m'),f(B.mPal,1,' m'),sg(B.mPal-A.mPal,1,' m')],
+    ['Coût par palette',f(A.cPal,2,' €'),f(B.cPal,2,' €'),sg(B.cPal-A.cPal,2,' €')],['Palettes par bobine',f(A.palBob,0),f(B.palBob,0),sg(B.palBob-A.palBob,0)],
+    ['Nombre de tours',f(A.t,0),f(B.t,0),''],['Pré-étirage estimé',f(A.pre,0,' %'),f(B.pre,0,' %'),'']]
+    .concat(A.bp>0||B.bp>0?[['Bobines par palette livrée',f(A.bp>0?A.bp:NaN,0),f(B.bp>0?B.bp:NaN,0),'']]:[])
+    .concat(L.an>0?[['Mètres de film par an',f(A.mAn,0,' m'),f(B.mAn,0,' m'),sg(B.mAn-A.mAn,0,' m')],['Coût annuel',f(A.cAn,0,' €'),f(B.cAn,0,' €'),sg(B.cAn-A.cAn,0,' €')]]:[]);
+  y=H2(doc,'Détail du calcul',y)+2;
+  AT(doc,{startY:y,margin:{left:M,right:M},head:[two?['',A.name,B.name,'Écart']:['',A.name]],styles:{halign:'right',fontSize:9.4,cellPadding:{top:1.8,bottom:1.8,left:2.5,right:2.5}},
+    columnStyles:{0:{halign:'left',cellWidth:two?72:110},2:{fontStyle:'bold',textColor:NUIT}},didParseCell:d=>{if(d.section==='head'&&d.column.index===0)d.cell.styles.halign='left'},
+    body:rows.map(r=>(two?r:r.slice(0,2)).map(t))});
+  y=doc.lastAutoTable.finalY+8;
+  const notes=$('l_notes').value.trim();
+  if(notes)y=PARA(doc,'Observations : '+notes,y,10)+2;
+  y+=sp(doc);doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...GREY);
+  {const l=doc.splitTextToSize(t('Méthode : coût au mètre = prix de la bobine / longueur. Mètres déposés par palette = film déposé mesuré sur la palette / poids d\'un mètre de film (poids net de la bobine, mandrin déduit, divisé par sa longueur). Coût par palette = mètres déposés x coût au mètre. Pré-étirage estimé = (nombre de tours x périmètre de la palette de '+fmt(num('l_wp'),2)+' x '+fmt(num('l_lp'),2)+' m) / mètres déposés - 1.'+(L.an>0?' Base annuelle : '+fmt(num('l_pj'))+' palettes par jour sur '+fmt(num('l_ja'))+' jours.':'')+' Valeurs indicatives, issues de l\'essai.'),W-2*M);if(y+l.length*3.6>279){doc.addPage();pageHead(doc,cli,'Coût du film au mètre linéaire');y=40;doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...GREY)}doc.text(l,M,y)}
+  footAll(doc);
+  const safe=cli.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'')||'Client';
+  return {doc,name:'KL_Groupe_Cout_au_metre_'+safe+(dv?'_'+dv:'')+'.pdf'};
+}
 function buildImpactPdf(p){needData(p);return adaptive(()=>buildImpactCore(p))}
 function buildImpactCore(p){
   const H=p==='h',r=calc(p),A=r[1],B=r[2],obj=H?'housse':'film',P=proj(p,r);
@@ -1197,6 +1304,7 @@ async function savePdf(build,msg){
 $('m_pdf').addEventListener('click',()=>savePdf(buildMachinePdf,$('m_msg')));
 ['f','h'].forEach(p=>$(p+'_imp').addEventListener('click',()=>savePdf(()=>buildImpactPdf(p),$(p+'_msg'))));
 ['f','h'].forEach(p=>$(p+'_syn').addEventListener('click',()=>savePdf(()=>buildPdf(p,true),$(p+'_msg'))));
+$('l_pdf').addEventListener('click',()=>savePdf(buildLinPdf,$('l_msg')));
 
 /* ---- clavier : se ferme en touchant ailleurs ou avec la touche OK ---- */
 document.querySelectorAll('input[inputmode="decimal"],input[type="text"]').forEach(i=>i.setAttribute('enterkeyhint','done'));
@@ -1571,7 +1679,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-234000';
+window.APP_VERSION='20261126-002000';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
