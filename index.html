@@ -73,6 +73,8 @@ textarea{min-height:80px;resize:vertical;background:var(--surface);border-color:
 .btn[disabled]{opacity:.5}
 .ghost{background:transparent;color:var(--brand-fg);border:1px solid var(--brand-fg);font-size:15px;padding:11px}
 .note{font-size:12px;color:var(--muted);margin:0}
+.inc{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:600;color:var(--fg);cursor:pointer;padding:6px 0}
+.inc input[type=checkbox]{width:22px;height:22px;min-height:0;flex:0 0 22px;accent-color:var(--accent);margin:0;padding:0}
 .msg{font-size:13px;color:var(--muted);text-align:center;min-height:1em;margin:0}
 .unit{font-size:11px;color:var(--muted)}
 .view{display:contents}
@@ -338,7 +340,8 @@ select{appearance:auto}
     <label for="c_l">Largeur du film (m)</label><input id="c_l" inputmode="decimal" value="0,5">
     <label for="c_la">Longueur annoncée (m)</label><input id="c_la" inputmode="decimal" value="1500">
     <label for="c_ea">Épaisseur annoncée (µ)</label><input id="c_ea" inputmode="decimal" value="20">
-  </div><div class="tiles" id="c_res1"></div></div>
+  </div><div class="tiles" id="c_res1"></div>
+    <label class="inc"><input type="checkbox" id="c_inc1"> Inclure le contrôle de la bobine dans la fiche client</label></div>
   <div class="card"><h2>Mesure du pré-étirage</h2><div class="grid two">
     <label for="c_e">Épaisseur du film (µ)</label><input id="c_e" inputmode="decimal" value="15">
     <label for="c_lb">Largeur bobine (m)</label><input id="c_lb" inputmode="decimal" value="0,5">
@@ -347,7 +350,9 @@ select{appearance:auto}
     <label for="c_nt">Nombre de tours</label><input id="c_nt" inputmode="decimal" value="21">
     <label for="c_pm">Poids mesuré (g)</label><input id="c_pm" inputmode="decimal" value="280">
     <label for="c_pc">Pré-étirage cible (%)</label><input id="c_pc" inputmode="decimal" value="204">
-  </div><div class="tiles" id="c_res2"></div></div>
+  </div><div class="tiles" id="c_res2"></div>
+    <label class="inc"><input type="checkbox" id="c_inc2"> Inclure la mesure du pré-étirage dans la fiche client</label></div>
+  <p class="note">Les blocs cochés sont ajoutés sur une page « Contrôle du film » de la fiche PDF de l'onglet Film.</p>
 </section>
 
 <div class="card">
@@ -494,19 +499,23 @@ function render(){
   });
   renderMachine();
   if(typeof syncWeights==='function'&&$('a_items').children.length)syncWeights();
+  const C=ctrl();
+  $('c_res1').innerHTML=tile(fmt(C.eR,1)+' µ','épaisseur réelle pour la longueur annoncée')+tile(fmt(C.lR)+' m','longueur réelle pour l\'épaisseur annoncée');
+  $('c_res2').innerHTML=tile(fmt(C.tx*100)+' %','pré-étirage mesuré')+tile(fmt(C.eRes,1)+' µ','épaisseur résiduelle mesurée')+
+    tile(fmt(C.pCible)+' g','poids à déposer pour la cible')+tile(fmt(C.eCible,1)+' µ','épaisseur résiduelle à la cible')+
+    tile(fmt(C.p0)+' g','poids théorique sans pré-étirage')+tile(fmt(C.ecart)+' g','écart mesuré / cible par palette');
+}
+function ctrl(){
   const D=num('dens'),net=num('c_pb')-num('c_m'),L=num('c_l');
-  $('c_res1').innerHTML=tile(fmt(net/(num('c_la')*L*D),1)+' µ','épaisseur réelle pour la longueur annoncée')+tile(fmt(net/(num('c_ea')*L*D))+' m','longueur réelle pour l\'épaisseur annoncée');
   const e=num('c_e'),p0=2*(num('c_wp')+num('c_lp'))*num('c_nt')*num('c_lb')*e*D,tx=p0/num('c_pm')-1,pc=num('c_pc')/100;
-  $('c_res2').innerHTML=tile(fmt(tx*100)+' %','pré-étirage mesuré')+tile(fmt(e/(1+tx),1)+' µ','épaisseur résiduelle mesurée')+
-    tile(fmt(p0/(1+pc))+' g','poids à déposer pour la cible')+tile(fmt(e/(1+pc),1)+' µ','épaisseur résiduelle à la cible')+
-    tile(fmt(p0)+' g','poids théorique sans pré-étirage')+tile(fmt(num('c_pm')-p0/(1+pc))+' g','écart mesuré / cible par palette');
+  return {net,eR:net/(num('c_la')*L*D),lR:net/(num('c_ea')*L*D),p0,tx,pc,eRes:e/(1+tx),pCible:p0/(1+pc),eCible:e/(1+pc),ecart:num('c_pm')-p0/(1+pc)};
 }
 
 /* ---- sauvegarde locale du brouillon ---- */
-function save(){try{const o={};inputs.forEach(i=>o[i.id]=i.value);localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
-function load(){try{const o=JSON.parse(localStorage.getItem(KEY)||'null');if(o)inputs.forEach(i=>{if(o[i.id]!=null)i.value=o[i.id]})}catch(e){}}
-inputs.forEach(i=>{i.addEventListener('input',()=>{render();save()});if(i.tagName==='SELECT')i.addEventListener('change',()=>{render();save()})});
-$('reset').addEventListener('click',()=>{inputs.forEach(i=>i.value=defaults[i.id]);setDates();render();save()});
+function save(){try{const o={};inputs.forEach(i=>o[i.id]=i.type==='checkbox'?i.checked:i.value);localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
+function load(){try{const o=JSON.parse(localStorage.getItem(KEY)||'null');if(o)inputs.forEach(i=>{if(o[i.id]!=null){if(i.type==='checkbox')i.checked=!!o[i.id];else i.value=o[i.id]}})}catch(e){}}
+inputs.forEach(i=>{i.addEventListener('input',()=>{render();save()});if(i.tagName==='SELECT'||i.type==='checkbox')i.addEventListener('change',()=>{render();save()})});
+$('reset').addEventListener('click',()=>{inputs.forEach(i=>{if(i.type==='checkbox')i.checked=false;else i.value=defaults[i.id]});setDates();render();save()});
 function setDates(){const t=new Date().toISOString().slice(0,10);['f_date','h_date'].forEach(id=>{if(!$(id).value)$(id).value=t})}
 load();setDates();render();
 try{const t=localStorage.getItem(KEY+'-tab');if(t)show(t)}catch(e){}
@@ -673,6 +682,32 @@ function buildPdf(p){
     const nl=doc.splitTextToSize(t(notes),W-2*M).slice(0,Math.max(2,Math.floor((256-y)/5)));doc.text(nl,M,y)}
   doc.setFontSize(8.5);doc.setTextColor(...GREY);
   doc.text(doc.splitTextToSize(t('Méthode : base de '+fmt(num(p+'_pj'))+' palettes par jour sur '+fmt(num(p+'_ja'))+' jours. Coût par palette = poids déposé x prix au kg net (hors mandrin). Densité retenue : '+fmt(num('dens'),2)+'.'),W-2*M),M,268);
+
+  /* page Contrôle du film : blocs cochés dans l'onglet Contrôle */
+  const inc1=!H&&$('c_inc1').checked,inc2=!H&&$('c_inc2').checked;
+  if(inc1||inc2){
+    const C=ctrl();
+    doc.addPage();header();y=H1(doc,'Contrôle du film');
+    const tb=(rows)=>{AT(doc,{startY:y,margin:{left:M,right:M},head:[['Mesure','Valeur']],styles:{halign:'right',fontSize:9.4,cellPadding:{top:1.7,bottom:1.7,left:2.5,right:2.5}},
+      columnStyles:{0:{halign:'left',cellWidth:110},1:{fontStyle:'bold',textColor:NUIT}},
+      didParseCell:d=>{if(d.section==='head'&&d.column.index===0)d.cell.styles.halign='left'},
+      body:rows.map(([l,v])=>[t(l),t(v)])});y=doc.lastAutoTable.finalY+8};
+    if(inc1){
+      y=H2(doc,'Contrôle de la bobine',y)+2;
+      tb([['Poids de la bobine',fmt(num('c_pb'))+' g'],['Poids du mandrin',fmt(num('c_m'))+' g'],['Poids net de film',fmt(C.net)+' g'],
+        ['Largeur du film',fmt(num('c_l'),2)+' m'],['Longueur annoncée',fmt(num('c_la'))+' m'],['Épaisseur annoncée',fmt(num('c_ea'),1)+' µ']]);
+      y=KPI(doc,y,[[fmt(C.eR,1)+' µ','épaisseur réelle pour la longueur annoncée'],[fmt(C.lR)+' m','longueur réelle pour l\'épaisseur annoncée'],
+        [(C.lR-num('c_la')>0?'+':'')+fmt(C.lR-num('c_la'))+' m','écart avec la longueur annoncée']],26,17)+11;
+    }
+    if(inc2){
+      if(inc1&&y>172){doc.addPage();header();y=42}
+      y=H2(doc,'Mesure du pré-étirage',y)+2;
+      tb([['Épaisseur du film',fmt(num('c_e'),1)+' µ'],['Largeur de la bobine',fmt(num('c_lb'),2)+' m'],['Dimensions de la palette',fmt(num('c_wp'),2)+' x '+fmt(num('c_lp'),2)+' m'],
+        ['Nombre de tours',fmt(num('c_nt'))],['Poids de film mesuré par palette',fmt(num('c_pm'))+' g'],['Pré-étirage cible',fmt(num('c_pc'))+' %']]);
+      y=KPI(doc,y,[[fmt(C.tx*100)+' %','pré-étirage mesuré'],[fmt(C.eRes,1)+' µ','épaisseur résiduelle mesurée'],[fmt(C.pCible)+' g','poids à déposer pour la cible']],26,17)+6;
+      y=PARA(doc,'Sans pré-étirage, la palette recevrait '+fmt(C.p0)+' g de film. Au pré-étirage cible de '+fmt(num('c_pc'))+' %, il faut déposer '+fmt(C.pCible)+' g, soit une épaisseur résiduelle de '+fmt(C.eCible,1)+' µ. Écart mesuré par rapport à la cible : '+(C.ecart>0?'+':'')+fmt(C.ecart)+' g par palette.',y);
+    }
+  }
 
   /* page Constat : photos et validation */
   if(phFor(p,1)||phFor(p,2)||SIG[p].has){
@@ -1191,7 +1226,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261124-232824';
+window.APP_VERSION='20261125-071500';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
