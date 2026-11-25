@@ -566,6 +566,15 @@ function ctrl(){
 /* ---- sauvegarde locale du brouillon ---- */
 function save(){try{const o={};inputs.forEach(i=>o[i.id]=i.type==='checkbox'?i.checked:i.value);localStorage.setItem(KEY,JSON.stringify(o))}catch(e){}}
 function load(){try{const o=JSON.parse(localStorage.getItem(KEY)||'null');if(o)inputs.forEach(i=>{if(o[i.id]!=null){if(i.type==='checkbox')i.checked=!!o[i.id];else i.value=o[i.id]}})}catch(e){}}
+/* Film actuel -> Contrôle : recopie automatique, sans écraser une valeur modifiée à la main */
+const fr2=v=>{if(!isFinite(v))return '';return String(Math.round(v*100)/100).replace('.',',')};
+const kg2g=v=>{const x=num0(v);return String(v).trim()===''?'':fr2(x*1000)};
+const LINK={f_pb1:[['c_pb',kg2g]],f_m1:[['c_m',kg2g]],f_l1:[['c_l'],['c_lb']],f_e1:[['c_ea'],['c_e']],f_d1:[['c_pm']]};
+function film2ctrl(onlyEmpty){Object.entries(LINK).forEach(([src,ts])=>{const v=$(src).value;ts.forEach(([t,f])=>{const el=$(t),nv=f?f(v):v;if(nv!==''&&String(el.value).trim()==='')el.value=nv;else if(!onlyEmpty&&el.dataset.auto===el.value)el.value=nv;el.dataset.auto=nv})})}
+Object.entries(LINK).forEach(([src,ts])=>{const el=$(src);
+  el.addEventListener('focus',()=>{const v=el.value;ts.forEach(([t,f])=>{$(t).dataset.auto=f?f(v):v})});
+  el.addEventListener('input',()=>{const v=el.value;ts.forEach(([t,f])=>{const c=$(t),nv=f?f(v):v,old=c.dataset.auto;
+    if(String(c.value).trim()===''||c.value===old||c.value===c.defaultValue)c.value=nv;c.dataset.auto=nv})})});
 inputs.forEach(i=>{i.addEventListener('input',()=>{render();save()});if(i.tagName==='SELECT'||i.type==='checkbox')i.addEventListener('change',()=>{render();save()})});
 $('reset').addEventListener('click',()=>{inputs.forEach(i=>{if(i.type==='checkbox')i.checked=false;else i.value=defaults[i.id]});setDates();render();save()});
 function setDates(){const t=new Date().toISOString().slice(0,10);['f_date','h_date'].forEach(id=>{if(!$(id).value)$(id).value=t})}
@@ -1237,7 +1246,7 @@ $('a_imp').addEventListener('change',async e=>{
         A.regs.push({id:'r'+Math.random().toString(36).slice(2,7),label:g.nom||'Réglage',pre:g.preEtirage||'',tension:g.tension||'',d:g.poidsDeposeG!=null?String(g.poidsDeposeG):'',remark:g.remarque||'',photo:ph})}}
       if(D.validation){$(p+'_sgn').value=D.validation.signataire||'';$(p+'_sgf').value=D.validation.fonction||''}
     }
-    AUD=A;showPh(p,1);showPh(p,2);saveAudit();renderAudit();render();save();
+    AUD=A;showPh(p,1);showPh(p,2);if(p==='f')film2ctrl(true);saveAudit();renderAudit();render();save();
     const sf=(R&&R.signature)||(D.validation&&D.validation.fichier),sp=await pic(sf);
     if(sp)await putSig(p,sp);else{const st=SIG[p];if(st.size)st.size();const c=$(p+'_sig');c.getContext('2d').clearRect(0,0,c.width,c.height);st.has=false}
     show(p==='f'?'film':'housse');
@@ -1350,7 +1359,7 @@ function renderHist(){
 $('s_q').addEventListener('input',renderHist);
 $('s_list').addEventListener('click',async ev=>{
   const b=ev.target.closest('button[data-a]');if(!b)return;const e=HIST.find(x=>x.id===b.dataset.id);if(!e)return;const msg=$('s_msg');
-  if(b.dataset.a==='open'){const p=e.type==='housse'?'h':'f';Object.entries(e.inputs||{}).forEach(([k,v])=>setIn(k,v));render();save();show(p==='f'?'film':'housse');$(p+'_msg').textContent='Essai du '+dfr(e.date)+' rechargé.'}
+  if(b.dataset.a==='open'){const p=e.type==='housse'?'h':'f';Object.entries(e.inputs||{}).forEach(([k,v])=>setIn(k,v));if(p==='f')film2ctrl(true);render();save();show(p==='f'?'film':'housse');$(p+'_msg').textContent='Essai du '+dfr(e.date)+' rechargé.'}
   if(b.dataset.a==='del'){
     if(b.dataset.c!=='1'){b.dataset.c='1';b.textContent='Confirmer la suppression';return}
     try{if(DB&&UID)await DB.collection('data/users/'+UID).doc(e.id).delete();else{HIST=HIST.filter(x=>x.id!==e.id);try{localStorage.setItem(HKEY,JSON.stringify(HIST))}catch(err){}renderHist()}msg.textContent='Essai supprimé.'}
@@ -1419,7 +1428,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-193000';
+window.APP_VERSION='20261125-194500';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
