@@ -208,8 +208,9 @@ select{appearance:auto}
     <canvas class="sig" id="f_sig" aria-label="Zone de signature"></canvas>
     <button class="btn ghost" id="f_sgclr">Effacer la signature</button>
   </div>
-  <button class="btn" id="f_pdf">Créer la fiche PDF client</button>
-  <button class="btn ghost" id="f_imp">Créer la fiche d'impact environnemental</button>
+  <button class="btn" id="f_pdf">Rapport complet (audit de performance)</button>
+  <button class="btn ghost" id="f_syn">Synthèse décisionnelle (1 page, pour la direction)</button>
+  <button class="btn ghost" id="f_imp">Annexe environnementale (fiche d'impact, pour le service RSE)</button>
   <button class="btn ghost" id="f_save">Enregistrer l'essai dans le suivi</button>
   <p class="msg" id="f_msg"></p>
 </section>
@@ -272,8 +273,9 @@ select{appearance:auto}
     <canvas class="sig" id="h_sig" aria-label="Zone de signature"></canvas>
     <button class="btn ghost" id="h_sgclr">Effacer la signature</button>
   </div>
-  <button class="btn" id="h_pdf">Créer la fiche PDF client</button>
-  <button class="btn ghost" id="h_imp">Créer la fiche d'impact environnemental</button>
+  <button class="btn" id="h_pdf">Rapport complet (audit de performance)</button>
+  <button class="btn ghost" id="h_syn">Synthèse décisionnelle (1 page, pour la direction)</button>
+  <button class="btn ghost" id="h_imp">Annexe environnementale (fiche d'impact, pour le service RSE)</button>
   <button class="btn ghost" id="h_save">Enregistrer l'essai dans le suivi</button>
   <p class="msg" id="h_msg"></p>
 </section>
@@ -437,7 +439,7 @@ function calc(p){
   });
   const A=r[1],B=r[2];
   r.gPal=A.cout-B.cout; r.gBud=A.bud-B.bud; r.gKg=A.cons-B.cons; r.gCO2=A.co2-B.co2; r.pCO2=pct(r.gCO2,A.co2);
-  r.gRep=A.repAn-B.repAn; r.gTot=r.gBud+r.gRep; r.gVir=A.vir-B.vir;
+  r.gRep=A.repAn-B.repAn; r.gTot=Math.round(r.gBud)+Math.round(r.gRep); r.gVir=A.vir-B.vir;
   r.gBob=A.bob-B.bob; r.gMand=A.mand-B.mand;
   r.pBud=pct(r.gBud,A.bud); r.pKg=pct(r.gKg,A.cons);
   /* humain et performance : changements de bobine, casses, manutention, incidents */
@@ -461,9 +463,9 @@ function projRows(gBud,gRep,g,inv,loy,months,maintAn){
   return rows;
 }
 function proj(p,r){ /* sans hausse de prix : volumes et prix constants */
-  const g=0,rows=projRows(r.gBud,r.gRep,g,0,0,0,0);let cf=0;
+  const g=0,rows=projRows(Math.round(r.gBud),Math.round(r.gRep),g,0,0,0,0);let cf=0;
   const rowsFilm=rows.map(o=>{cf+=o.film;return Object.assign({},o,{cumFilm:cf,cum:cf})});
-  return {g,rows,rowsFilm,mens:r.gBud/12,cumFilm5:cf,cum5:rows[4].cum,co2:r.gCO2*5,kg:r.gKg*5};
+  return {g,rows,rowsFilm,mens:Math.round(r.gBud)/12,cumFilm5:cf,cum5:rows[4].cum,co2:r.gCO2*5,kg:r.gKg*5};
 }
 const DUR=[24,36,48,60];
 function mcalc(){
@@ -537,7 +539,7 @@ function render(){
       tile(fmt(r.gVir)+' kg','de plastique vierge en moins par an')+
       tile(fmt(r.gRep)+' €','d\'éco-contribution REP en moins par an')+
       tile(fmt(r.gTot)+' €','d\'économie totale par an, '+obj+' et REP')+
-      tile(fmt(B.rc*100)+' %','de recyclé dans la solution KL Groupe ('+(ok?'objectif PPWR 2030 atteint':'objectif PPWR 2030 : 35 %')+')')+
+      tile(fmt(B.rc*100)+' %','de recyclé dans la solution KL Groupe (seuil PPWR 2030 applicable à confirmer)')+
       tile(fmt(A.repAn)+' → '+fmt(B.repAn)+' €','d\'éco-contribution REP par an');
     $(p+'_kn').textContent='Prix de la bobine : '+fmt(A.pr,2)+' € / '+fmt(B.pr,2)+' €. Prix au kg brut : '+fmt(A.kgBrut,2)+' € / '+fmt(B.kgBrut,2)+' €. Prix au kg net, hors mandrin, utilisé pour les coûts : '+fmt(A.kgNet,2)+' € / '+fmt(B.kgNet,2)+' €.';
     const P=proj(p,r);
@@ -744,8 +746,8 @@ function photoGrid(doc,y,list,newPage){
 }
 
 function needData(p){const r=calc(p);if(!(r[1].d>0&&r[2].d>0&&r.an>0))throw new Error('renseignez d\'abord les poids déposés (actuel et KL Groupe) et les palettes par jour')}
-function buildPdf(p){needData(p);return adaptive(()=>buildPdfCore(p))}
-function buildPdfCore(p){
+function buildPdf(p,synth){needData(p);return adaptive(()=>buildPdfCore(p,synth))}
+function buildPdfCore(p,synth){
   const H=p==='h',r=calc(p),A=r[1],B=r[2];
   const doc=layDoc(), W=210, M=16;
   const cli=$(p+'_cli').value.trim()||'Client', intr=$(p+'_int').value.trim(), fct=$(p+'_fct').value.trim();
@@ -793,7 +795,7 @@ function buildPdfCore(p){
   pillar(gx+gw+6,y,gw,gh,'ENVIRONNEMENT',fmt(r.gKg)+' kg / an','de plastique en moins ('+fmt(r.pKg,1)+' %)','CALCULÉ',[
     [fmt(r.gCO2/1000,1)+' t CO2e évitées, film et mandrins','ESTIMÉ'],
     [fmt(r.gMand)+' kg de mandrins en moins par an','CALCULÉ'],
-    [fmt(B.rc*100)+' % de recyclé (objectif PPWR 35 %)','FICHE PRODUIT']]);
+    [fmt(B.rc*100)+' % de recyclé, seuil PPWR 2030 à confirmer','FICHE PRODUIT']]);
   const y2=y+gh+6+sp(doc);
   pillar(gx,y2,gw,gh,'HUMAIN',fmt(r.gHeures,Math.abs(r.gHeures)<10?1:0)+' h / an','d\'intervention évitées par an','CALCULÉ',[
     [fmt(r.gBob)+' changements de bobine en moins par an','CALCULÉ'],
@@ -815,6 +817,9 @@ function buildPdfCore(p){
   [[L1,A,NUIT],['KL Groupe',B,GREEN]].forEach(([l,o,c])=>{doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...c);doc.text(t(l),16,y);
     doc.setFont('helvetica','normal');doc.setTextColor(...DARK);doc.text(t(fmt(o.e)+' µ, bobine de '+fmt(o.pb,2)+' kg, '+fmt(o.d)+' g déposés par palette'),56,y);y+=6});
 
+  if(synth){ /* synthèse décisionnelle : la page 1 seule */
+    footAll(doc);const sf=cli.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'')||'Client';
+    return {doc,name:'KL_Groupe_Synthese_'+(H?'Housse':'Film')+'_'+sf+(dv?'_'+dv:'')+'.pdf'}}
   /* page 2 : résultats détaillés */
   doc.addPage();header();y=H1(doc,'Résultats de l\'essai');
   AT(doc,{startY:y,margin:{left:M,right:M},head:[['',L1,'KL Groupe','Écart']],
@@ -922,14 +927,14 @@ function buildPdfCore(p){
       else{doc.addPage();header();y=H1(doc,'Comparatif des réglages')}
       AT(doc,{startY:y,margin:{left:M,right:M},theme:'grid',
         head:[['Réglage','Film','Pré-étirage','Tension','Poids / palette','Coût / palette','Économie / an','CO2e évité / an']],
-        body:cmp.rows.map(o=>[t(o.label+(o.best&&!o.main?' (meilleur)':'')+(o.same?' (même poids que la solution retenue)':'')),o.film==='actuel'?'Actuel':'KL Groupe',t(o.pre?o.pre+' %':'-'),t(o.tension||'-'),t(fmt(o.d)+' g'),t(fmt(o.cout,3)+' €'),o.ref?'référence':t(fmt(o.eco)+' €'),o.ref?'-':t(fmt(o.co2/1000,1)+' t')]),
+        body:cmp.rows.map(o=>[t(o.label+(o.best&&!o.main?' (meilleur)':'')),o.film==='actuel'?'Actuel':'KL Groupe',t(o.pre?o.pre+' %':'-'),t(o.tension||'-'),t(fmt(o.d)+' g'),t(fmt(o.cout,3)+' €'),o.ref?'référence':t(fmt(o.eco)+' €'),o.ref?'-':t(fmt(o.co2/1000,1)+' t')]),
         styles:{font:'helvetica',fontSize:9,textColor:DARK,lineColor:[217,226,218],cellPadding:2,halign:'right'},
         headStyles:{fillColor:GREEN,textColor:255,fontStyle:'bold',halign:'center'},columnStyles:{0:{halign:'left',cellWidth:42},1:{halign:'left',cellWidth:21},3:{halign:'left'}},
         didParseCell:d=>{if(d.section==='body'&&cmp.rows[d.row.index].best){d.cell.styles.fontStyle='bold';d.cell.styles.textColor=GREEN}},
         alternateRowStyles:{fillColor:[246,250,246]}});
       y=doc.lastAutoTable.finalY+7;
       const b=cmp.rows.find(o=>o.best);
-      doc.setFont('helvetica','italic');doc.setFontSize(8.5);doc.setTextColor(...GREY);{const nl=doc.splitTextToSize(t('Économie calculée sur le '+mat+' seul, sur la même base que la page Résultats (hors éco-contribution). Chaque réglage est chiffré au prix du '+mat+' indiqué dans la colonne Film.'),W-2*M);doc.text(nl,M,y-2);y+=nl.length*3.8+2}
+      doc.setFont('helvetica','italic');doc.setFontSize(8.5);doc.setTextColor(...GREY);{const nl=doc.splitTextToSize(t('Économie calculée sur le '+mat+' seul, sur la même base que la page Résultats (hors éco-contribution). Chaque réglage est chiffré au prix du '+mat+' indiqué dans la colonne Film.'+(cmp.rows[1]&&cmp.rows[1].merged?' « '+cmp.rows[1].regLabel+' » correspond à la configuration machine de la solution retenue.':'')),W-2*M);doc.text(nl,M,y-2);y+=nl.length*3.8+2}
       {const tqB=(B.tq||'').toLowerCase(),ok=tqB==='correcte'||tqB==='bonne';
         let txt='L\'essai réalisé avec la solution KL Groupe permet de réduire le poids de '+mat+' déposé de '+fmt(A.d)+' g à '+fmt(B.d)+' g par palette'+(ok?', tout en conservant une tenue de palette jugée satisfaisante':'')+'. Cette configuration constitue la solution retenue à l\'issue des essais.';
         if(b&&!b.main)txt+=' Le réglage « '+b.label+' » a donné un résultat encore meilleur ('+fmt(b.d)+' g par palette, '+fmt(b.eco)+' € d\'économie par an) : il reste à confirmer avant d\'être retenu.';
@@ -949,7 +954,7 @@ function buildPdfCore(p){
   doc.addPage();header();
   const obj=H?'housse':'film';
   y=H1(doc,'Bilan environnemental et réglementaire');
-  y=KPI(doc,y,[[fmt(r.gCO2/1000,1)+' t','de CO2e évitées par an ('+fmt(r.pCO2,1)+' %)'],[fmt(r.gRep)+' €','d\'éco-contribution REP potentielle en moins par an'],[fmt(r.gTot)+' €','d\'économie totale estimée par an, '+obj+' et REP']],27,19)+7;
+  y=KPI(doc,y,[[fmt(r.gCO2/1000,1)+' t','de CO2e évitées par an, film et mandrins ('+fmt(r.pCO2,1)+' %)'],[fmt(r.gRep)+' €','d\'éco-contribution REP potentielle en moins par an'],[fmt(r.gTot)+' €','d\'économie totale estimée par an, '+obj+' et REP']],27,19)+7;
   AT(doc,{
     startY:y,margin:{left:M,right:M},theme:'grid',
     head:[['',L1,'KL Groupe','Écart']],
@@ -1113,7 +1118,7 @@ function buildImpactCore(p){
   doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(...DARK);doc.text(t('Mesure et estimation des bénéfices liés à l\'optimisation du conditionnement.'),M,67);
   doc.setFillColor(...GREEN);doc.rect(M,70.5,18,1.2,'F');y=80;
   y=infoRow(doc,y,[['Comparaison','Actuel / KL Groupe'],['Date de l\'essai',dt],['Établie le',today],['Volume',fmt(r.an)+' palettes / an']]);
-  y=KPI(doc,y,[[fmt(r.gCO2/1000,1)+' t','de CO2e évitées par an ('+fmt(r.pCO2,1)+' %)'],[fmt(r.gKg)+' kg','de plastique économisé par an'],[fmt(r.gRep)+' €','économie potentielle sur l\'éco-contribution REP, estimation indicative']],30,20)+5;
+  y=KPI(doc,y,[[fmt(r.gCO2/1000,1)+' t','de CO2e évitées par an, film et mandrins ('+fmt(r.pCO2,1)+' %)'],[fmt(r.gKg)+' kg','de plastique économisé par an'],[fmt(r.gRep)+' €','économie potentielle sur l\'éco-contribution REP, estimation indicative']],30,20)+5;
   y=KPI(doc,y,[[fmt(r.gVir/1000,1)+' t','de matière plastique vierge économisée par an'],[fmt(r.gMand)+' kg','de mandrins carton en moins chaque année'],[fmt(-r.pKg,1)+' %','de plastique par palette, film actuel / KL Groupe']],24,16)+5;
   doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...GREY);doc.text(t('Indicateur opérationnel complémentaire : '+fmt(r.gBob)+' bobines en moins par an, soit autant de changements et de manutentions évités.'),M,y+1);y+=11;
   para('Objet','Cette fiche présente l\'estimation des bénéfices environnementaux annuels liés au passage à la solution KL Groupe, sur la base des mesures réalisées lors de l\'essai sur site. Elle détaille les données utilisées, les méthodes de calcul et les sources de référence afin de garantir la transparence et la traçabilité des résultats présentés. '+
@@ -1188,6 +1193,7 @@ async function savePdf(build,msg){
 ['f','h'].forEach(p=>$(p+'_pdf').addEventListener('click',()=>savePdf(()=>buildPdf(p),$(p+'_msg'))));
 $('m_pdf').addEventListener('click',()=>savePdf(buildMachinePdf,$('m_msg')));
 ['f','h'].forEach(p=>$(p+'_imp').addEventListener('click',()=>savePdf(()=>buildImpactPdf(p),$(p+'_msg'))));
+['f','h'].forEach(p=>$(p+'_syn').addEventListener('click',()=>savePdf(()=>buildPdf(p,true),$(p+'_msg'))));
 
 /* ---- clavier : se ferme en touchant ailleurs ou avec la touche OK ---- */
 document.querySelectorAll('input[inputmode="decimal"],input[type="text"]').forEach(i=>i.setAttribute('enterkeyhint','done'));
@@ -1279,7 +1285,11 @@ function regCompare(p){
     return Object.assign({label,d,cout,eco:(A.cout-cout)*r.an,ecoRep:kg/1000*r.tarif,co2:A.cons*A.fkg-(d*r.an/1000)*F.fkg},extra)};
   const rows=[{label:(p==='h'?'Housse actuelle':'Film actuel'),d:A.d,cout:A.cout,eco:0,co2:0,ref:true,film:'actuel'},
     one('Solution KL Groupe, configuration retenue',B.d,{main:true,film:'kl'})];
-  AUD.regs.forEach(g=>{const d=num0(g.d);if(d>0)rows.push(one(g.label||'Réglage',d,{pre:g.pre,tension:g.tension,photo:g.photo,id:g.id,film:g.film==='actuel'?'actuel':'kl',same:g.film!=='actuel'&&Math.abs(d-B.d)<0.5}))});
+  const main=rows[1];
+  AUD.regs.forEach(g=>{const d=num0(g.d);if(!(d>0))return;
+    /* même film KL Groupe et même poids que la solution retenue : c'est sa configuration machine, on la reporte sur la ligne retenue au lieu d'une ligne en double */
+    if(g.film!=='actuel'&&Math.abs(d-B.d)<0.5&&!main.merged){main.merged=true;main.pre=g.pre;main.tension=g.tension;main.photo=g.photo;main.regLabel=g.label;return}
+    rows.push(one(g.label||'Réglage',d,{pre:g.pre,tension:g.tension,photo:g.photo,id:g.id,film:g.film==='actuel'?'actuel':'kl'}))});
   let best=null;rows.forEach(o=>{if(!o.ref&&o.film!=='actuel'&&(!best||o.eco>best.eco))best=o});if(best&&rows.length>2)best.best=true;
   return {rows,obj};
 }
@@ -1306,7 +1316,7 @@ function renderRegs(){
 function renderCmp(){
   const c=regCompare(AUD.src);
   $('a_cmp').innerHTML='<thead><tr><th>Réglage</th><th>g / palette</th><th>Coût / pal.</th><th>Économie / an</th><th>CO₂e évité</th></tr></thead><tbody>'+
-    c.rows.map(o=>'<tr class="'+(o.best?'sel':'')+'"><td>'+esc(o.label)+(o.best?'<span class="tag">Meilleur</span>':'')+'</td><td>'+fmt(o.d)+'</td><td>'+fmt(o.cout,3)+' €</td><td class="'+(o.ref?'':o.eco>=0?'pos':'neg')+'">'+(o.ref?'référence':fmt(o.eco)+' €')+'</td><td>'+(o.ref?'–':fmt(o.co2/1000,1)+' t')+'</td></tr>').join('')+'</tbody>';
+    c.rows.map(o=>'<tr class="'+(o.best?'sel':'')+'"><td>'+esc(o.label+(o.merged?' ('+o.regLabel+')':''))+(o.best?'<span class="tag">Meilleur</span>':'')+'</td><td>'+fmt(o.d)+'</td><td>'+fmt(o.cout,3)+' €</td><td class="'+(o.ref?'':o.eco>=0?'pos':'neg')+'">'+(o.ref?'référence':fmt(o.eco)+' €')+'</td><td>'+(o.ref?'–':fmt(o.co2/1000,1)+' t')+'</td></tr>').join('')+'</tbody>';
 }
 const growTa=el=>{if(!el.offsetParent)return;el.style.height='auto';el.style.height=(el.scrollHeight+2)+'px'};
 function renderAudit(){$('a_src').value=AUD.src;renderAuditItems();renderRegs();renderCmp();requestAnimationFrame(()=>document.querySelectorAll('#a_items textarea').forEach(growTa))}
@@ -1558,7 +1568,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-231000';
+window.APP_VERSION='20261125-232000';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
