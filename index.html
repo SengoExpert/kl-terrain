@@ -1219,13 +1219,13 @@ $('a_imp').addEventListener('change',async e=>{
     const A=freshAudit();
     if(R){
       p=R.src==='h'?'h':'f';A.src=p;A.side=R.side||'1';
-      Object.entries(R.inputs||{}).forEach(([k,v])=>{const el=$(k);if(!el||el.type==='file')return;if(el.type==='checkbox')el.checked=!!v;else el.value=v});
+      Object.entries(R.inputs||{}).forEach(([k,v])=>setIn(k,v));Object.entries(D.saisie||{}).forEach(([k,v])=>{if(k.startsWith('c_')&&!(k in (R.inputs||{})))setIn(k,v)});
       A.items=[];for(const it of (R.items||[])){const ph=await pic(it.fichier);if(ph)n++;A.items.push({key:it.key,label:it.label,remark:it.remark||'',photo:ph})}
       A.regs=[];for(const g of (R.regs||[])){const ph=await pic(g.fichier);if(ph)n++;A.regs.push({id:g.id||'r'+Math.random().toString(36).slice(2,7),label:g.label,pre:g.pre||'',tension:g.tension||'',d:g.d||'',remark:g.remark||'',photo:ph})}
       PH[p][1]=await pic(R.avant);PH[p][2]=await pic(R.apres);if(PH[p][1])n++;if(PH[p][2])n++;
     }else{ /* dossier exporté avant cette version : on remet ce qu'on peut */
       p=D.type==='housse'?'h':'f';A.src=p;
-      Object.entries(D.saisie||{}).forEach(([k,v])=>{const el=$(k);if(el&&el.type!=='file')el.value=v});
+      Object.entries(D.saisie||{}).forEach(([k,v])=>setIn(k,v));
       for(const o of (D.photos||[])){const ph=await pic(o.fichier);
         if(o.rubrique==='Photo avant (onglet essai)'){PH[p][1]=ph;if(ph)n++;continue}
         if(o.rubrique==='Photo après (onglet essai)'){PH[p][2]=ph;if(ph)n++;continue}
@@ -1296,7 +1296,7 @@ $('a_zip').addEventListener('click',async()=>{
         gains:{parPalette:r.gPal,budgetAn:r.gBud,budgetPct:r.pBud,plastiqueKgAn:r.gKg,plastiquePct:r.pKg,co2KgAn:r.gCO2,repAn:r.gRep,totalAn:r.gTot,bobinesEnMoinsAn:r.gBob,cumul5ans:P.cum5},
         palettesAn:r.an},
       reglages:regs,comparatifReglages:cmp.rows.map(o=>({reglage:o.label,poidsDeposeG:o.d,coutPalette:o.cout,economieAn:o.ref?null:o.eco,co2EviteKgAn:o.ref?null:o.co2,meilleur:!!o.best})),
-      photos,observations:$(p+'_notes').value.trim(),
+      controleBobine:ctrlExport(),photos,observations:$(p+'_notes').value.trim(),
       validation:SIG[p].has?{signataire:$(p+'_sgn').value.trim(),fonction:$(p+'_sgf').value.trim(),fichier:'signature-validation.png'}:null,
       restauration};
     zip.file('dossier.json',JSON.stringify(dossier,null,2));
@@ -1315,7 +1315,9 @@ function resume(p){
   const r=calc(p),A=r[1],B=r[2];
   return {gBud:r.gBud,gPal:r.gPal,pBud:r.pBud,gKg:r.gKg,pKg:r.pKg,gCO2:r.gCO2,gRep:r.gRep,gTot:r.gTot,dA:A.d,dB:B.d,coutA:A.cout,coutB:B.cout,consA:A.cons,consB:B.cons,an:r.an};
 }
-function snapshotInputs(p){const o={};inputs.forEach(i=>{if(i.id.startsWith(p+'_')||['dens','fv','fr','fi','fdv','rep','fc','repc','cho','chq'].includes(i.id))o[i.id]=i.value});return o}
+function snapshotInputs(p){const o={};inputs.forEach(i=>{if(i.id.startsWith(p+'_')||i.id.startsWith('c_')||['dens','fv','fr','fi','fdv','rep','fc','repc','cho','chq'].includes(i.id))o[i.id]=i.type==='checkbox'?i.checked:i.value});return o}
+function setIn(k,v){const el=$(k);if(!el||el.type==='file')return;if(el.type==='checkbox')el.checked=v===true||v==='true';else el.value=v==null?'':v}
+function ctrlExport(){const o={};inputs.forEach(i=>{if(!i.id.startsWith('c_'))return;const l=document.querySelector('label[for="'+i.id+'"]')||i.closest('label');o[(l?l.textContent.trim():i.id)]=i.type==='checkbox'?i.checked:i.value});return o}
 async function saveEssai(p){
   const msg=$(p+'_msg'),cli=$(p+'_cli').value.trim();
   if(!cli){msg.textContent='Indiquez le nom du client avant d\'enregistrer l\'essai.';return}
@@ -1348,7 +1350,7 @@ function renderHist(){
 $('s_q').addEventListener('input',renderHist);
 $('s_list').addEventListener('click',async ev=>{
   const b=ev.target.closest('button[data-a]');if(!b)return;const e=HIST.find(x=>x.id===b.dataset.id);if(!e)return;const msg=$('s_msg');
-  if(b.dataset.a==='open'){const p=e.type==='housse'?'h':'f';Object.entries(e.inputs||{}).forEach(([k,v])=>{const el=$(k);if(el&&el.type!=='file')el.value=v});render();save();show(p==='f'?'film':'housse');$(p+'_msg').textContent='Essai du '+dfr(e.date)+' rechargé.'}
+  if(b.dataset.a==='open'){const p=e.type==='housse'?'h':'f';Object.entries(e.inputs||{}).forEach(([k,v])=>setIn(k,v));render();save();show(p==='f'?'film':'housse');$(p+'_msg').textContent='Essai du '+dfr(e.date)+' rechargé.'}
   if(b.dataset.a==='del'){
     if(b.dataset.c!=='1'){b.dataset.c='1';b.textContent='Confirmer la suppression';return}
     try{if(DB&&UID)await DB.collection('data/users/'+UID).doc(e.id).delete();else{HIST=HIST.filter(x=>x.id!==e.id);try{localStorage.setItem(HKEY,JSON.stringify(HIST))}catch(err){}renderHist()}msg.textContent='Essai supprimé.'}
@@ -1417,7 +1419,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-181500';
+window.APP_VERSION='20261125-193000';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
