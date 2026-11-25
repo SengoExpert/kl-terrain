@@ -352,7 +352,7 @@ select{appearance:auto}
     <label for="c_lp">Longueur palette (m)</label><input id="c_lp" inputmode="decimal" value="1,2">
     <label for="c_nt">Nombre de tours</label><input id="c_nt" inputmode="decimal" value="21">
     <label for="c_pm">Poids mesuré (g)</label><input id="c_pm" inputmode="decimal" value="280">
-    <label for="c_pc">Pré-étirage cible (%)</label><input id="c_pc" inputmode="decimal" value="204">
+    <label for="c_pc">Pré-étirage cible (%), facultatif</label><input id="c_pc" inputmode="decimal" value="204">
   </div><div class="tiles" id="c_res2"></div>
     <label class="inc"><input type="checkbox" id="c_inc2"> Inclure la mesure du pré-étirage dans la fiche client</label></div>
   <p class="note">Les blocs cochés sont ajoutés sur une page « Contrôle du film » de la fiche PDF de l'onglet Film.</p>
@@ -505,13 +505,14 @@ function render(){
   const C=ctrl();
   $('c_res1').innerHTML=tile(fmt(C.eR,1)+' µ','épaisseur réelle pour la longueur annoncée')+tile(fmt(C.lR)+' m','longueur réelle pour l\'épaisseur annoncée');
   $('c_res2').innerHTML=tile(fmt(C.tx*100)+' %','pré-étirage mesuré')+tile(fmt(C.eRes,1)+' µ','épaisseur résiduelle mesurée')+
-    tile(fmt(C.pCible)+' g','poids à déposer pour la cible')+tile(fmt(C.eCible,1)+' µ','épaisseur résiduelle à la cible')+
-    tile(fmt(C.p0)+' g','poids théorique sans pré-étirage')+tile(fmt(C.ecart)+' g','écart mesuré / cible par palette');
+    tile(fmt(C.p0)+' g','poids théorique sans pré-étirage')+
+    (C.hasPc?tile(fmt(C.pCible)+' g','poids à déposer pour la cible')+tile(fmt(C.eCible,1)+' µ','épaisseur résiduelle à la cible')+tile(fmt(C.ecart)+' g','écart mesuré / cible par palette'):'');
 }
 function ctrl(){
   const D=num('dens'),net=num('c_pb')-num('c_m'),L=num('c_l');
   const e=num('c_e'),p0=2*(num('c_wp')+num('c_lp'))*num('c_nt')*num('c_lb')*e*D,tx=p0/num('c_pm')-1,pc=num('c_pc')/100;
-  return {net,eR:net/(num('c_la')*L*D),lR:net/(num('c_ea')*L*D),p0,tx,pc,eRes:e/(1+tx),pCible:p0/(1+pc),eCible:e/(1+pc),ecart:num('c_pm')-p0/(1+pc)};
+  const hasPc=String($('c_pc').value).trim()!==''&&num('c_pc')>0;
+  return {hasPc,net,eR:net/(num('c_la')*L*D),lR:net/(num('c_ea')*L*D),p0,tx,pc,eRes:e/(1+tx),pCible:p0/(1+pc),eCible:e/(1+pc),ecart:num('c_pm')-p0/(1+pc)};
 }
 
 /* ---- sauvegarde locale du brouillon ---- */
@@ -709,9 +710,10 @@ function buildPdf(p){
       if(inc1&&y>172){doc.addPage();header();y=42}
       y=H2(doc,'Mesure du pré-étirage',y)+2;
       tb([['Épaisseur du film',fmt(num('c_e'),1)+' µ'],['Largeur de la bobine',fmt(num('c_lb'),2)+' m'],['Dimensions de la palette',fmt(num('c_wp'),2)+' x '+fmt(num('c_lp'),2)+' m'],
-        ['Nombre de tours',fmt(num('c_nt'))],['Poids de film mesuré par palette',fmt(num('c_pm'))+' g'],['Pré-étirage cible',fmt(num('c_pc'))+' %']]);
-      y=KPI(doc,y,[[fmt(C.tx*100)+' %','pré-étirage mesuré'],[fmt(C.eRes,1)+' µ','épaisseur résiduelle mesurée'],[fmt(C.pCible)+' g','poids à déposer pour la cible']],26,17)+6;
-      y=PARA(doc,'Sans pré-étirage, la palette recevrait '+fmt(C.p0)+' g de film. Au pré-étirage cible de '+fmt(num('c_pc'))+' %, il faut déposer '+fmt(C.pCible)+' g, soit une épaisseur résiduelle de '+fmt(C.eCible,1)+' µ. Écart mesuré par rapport à la cible : '+(C.ecart>0?'+':'')+fmt(C.ecart)+' g par palette.',y);
+        ['Nombre de tours',fmt(num('c_nt'))],['Poids de film mesuré par palette',fmt(num('c_pm'))+' g']].concat(C.hasPc?[['Pré-étirage cible',fmt(num('c_pc'))+' %']]:[]));
+      y=KPI(doc,y,[[fmt(C.tx*100)+' %','pré-étirage mesuré'],[fmt(C.eRes,1)+' µ','épaisseur résiduelle mesurée'],C.hasPc?[fmt(C.pCible)+' g','poids à déposer pour la cible']:[fmt(C.p0)+' g','poids théorique sans pré-étirage']],26,17)+6;
+      y=PARA(doc,C.hasPc?'Sans pré-étirage, la palette recevrait '+fmt(C.p0)+' g de film. Au pré-étirage cible de '+fmt(num('c_pc'))+' %, il faut déposer '+fmt(C.pCible)+' g, soit une épaisseur résiduelle de '+fmt(C.eCible,1)+' µ. Écart mesuré par rapport à la cible : '+(C.ecart>0?'+':'')+fmt(C.ecart)+' g par palette.'
+        :'Sans pré-étirage, la palette recevrait '+fmt(C.p0)+' g de film. Avec les '+fmt(num('c_pm'))+' g mesurés, le pré-étirage réel est de '+fmt(C.tx*100)+' %.',y);
     }
   }
 
@@ -1290,7 +1292,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-143000';
+window.APP_VERSION='20261125-150000';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
