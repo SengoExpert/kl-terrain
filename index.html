@@ -420,7 +420,7 @@ function show(v){
   document.querySelectorAll('.tabs button').forEach(b=>b.setAttribute('aria-selected',b.dataset.v===v));
   document.querySelectorAll('.view').forEach(s=>{s.hidden=s.id!=='v-'+v});
   try{localStorage.setItem(KEY+'-tab',v)}catch(e){}
-  requestAnimationFrame(()=>{if(SIG.f.size)SIG.f.size();if(SIG.h.size)SIG.h.size();if(typeof fitAllObs==='function')fitAllObs()});
+  requestAnimationFrame(()=>{if(SIG.f.size)SIG.f.size();if(SIG.h.size)SIG.h.size();if(typeof fitAllObs==='function')fitAllObs();if(typeof growTa==='function')document.querySelectorAll('#a_items textarea').forEach(growTa)});
   window.scrollTo(0,0);
 }
 
@@ -689,14 +689,17 @@ function drawSig(doc,y,p,A,B,dt,compact){
 }
 
 function photoGrid(doc,y,list,newPage){
-  const M=16,g=6,bw=(210-2*M-g)/2,bh=bw*0.72,rowH=bh+18;
-  list.forEach((o,i)=>{
-    const col=i%2;if(col===0&&y+rowH>276)y=newPage();
-    const x=M+col*(bw+g);doc.setFillColor(246,250,246);doc.roundedRect(x,y,bw,bh,2,2,'F');fitImg(doc,o.ph,x,y,bw,bh);
-    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...DARK);doc.text(doc.splitTextToSize(t(o.cap||''),bw)[0]||'',x,y+bh+5);
-    if(o.sub){doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...GREY);doc.text(doc.splitTextToSize(t(o.sub),bw).slice(0,2),x,y+bh+9.5)}
-    if(col===1||i===list.length-1)y+=rowH;
-  });
+  const M=16,g=6,bw=(210-2*M-g)/2,bh=bw*0.72,LH=3.7;
+  doc.setFont('helvetica','normal');doc.setFontSize(8.5);
+  const subs=list.map(o=>o.sub?doc.splitTextToSize(t(o.sub),bw):[]);
+  for(let k=0;k<list.length;k+=2){
+    const n=Math.max(subs[k].length,subs[k+1]?subs[k+1].length:0),rowH=bh+9+n*LH+4;
+    if(y+rowH>278)y=newPage();
+    [0,1].forEach(c=>{const o=list[k+c];if(!o)return;const x=M+c*(bw+g);
+      doc.setFillColor(246,250,246);doc.roundedRect(x,y,bw,bh,2,2,'F');fitImg(doc,o.ph,x,y,bw,bh);
+      doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...DARK);doc.text(doc.splitTextToSize(t(o.cap||''),bw)[0]||'',x,y+bh+5);
+      if(subs[k+c].length){doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(...GREY);doc.text(subs[k+c],x,y+bh+9.5,{lineHeightFactor:1.25})}});
+    y+=rowH}
   return y;
 }
 
@@ -1179,14 +1182,15 @@ function renderCmp(){
   $('a_cmp').innerHTML='<thead><tr><th>Réglage</th><th>g / palette</th><th>Coût / pal.</th><th>Économie / an</th><th>CO₂e évité</th></tr></thead><tbody>'+
     c.rows.map(o=>'<tr class="'+(o.best?'sel':'')+'"><td>'+esc(o.label)+(o.best?'<span class="tag">Meilleur</span>':'')+'</td><td>'+fmt(o.d)+'</td><td>'+fmt(o.cout,3)+' €</td><td class="'+(o.ref?'':o.eco>=0?'pos':'neg')+'">'+(o.ref?'référence':fmt(o.eco)+' €')+'</td><td>'+(o.ref?'–':fmt(o.co2/1000,1)+' t')+'</td></tr>').join('')+'</tbody>';
 }
-function renderAudit(){$('a_src').value=AUD.src;renderAuditItems();renderRegs();renderCmp()}
+const growTa=el=>{if(!el.offsetParent)return;el.style.height='auto';el.style.height=(el.scrollHeight+2)+'px'};
+function renderAudit(){$('a_src').value=AUD.src;renderAuditItems();renderRegs();renderCmp();requestAnimationFrame(()=>document.querySelectorAll('#a_items textarea').forEach(growTa))}
 function syncWeights(){/* met à jour les champs de pesée sans reconstruire la liste */
   document.querySelectorAll('#a_items .ai').forEach(el=>{const d=defOf(el.dataset.k),id=wField(d),inp=el.querySelector('[data-f="w"]');if(id&&inp&&document.activeElement!==inp)inp.value=$(id).value});
   renderCmp();
 }
 function findTarget(el){const a=el.closest('.ai');if(!a)return null;if(a.dataset.r)return {kind:'reg',obj:AUD.regs.find(g=>g.id===a.dataset.r)};return {kind:'item',obj:AUD.items.find(i=>i.key===a.dataset.k)}}
 function onAuditInput(ev){
-  const f=ev.target.dataset.f;if(!f)return;const T=findTarget(ev.target);if(!T||!T.obj)return;
+  const f=ev.target.dataset.f;if(!f)return;if(ev.target.tagName==='TEXTAREA')growTa(ev.target);const T=findTarget(ev.target);if(!T||!T.obj)return;
   if(f==='w'){const id=wField(defOf(T.obj.key));if(id){$(id).value=ev.target.value;render();save()}}
   else{T.obj[f]=ev.target.value;if(T.kind==='reg')renderCmp()}
   saveAudit();
@@ -1428,7 +1432,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-194500';
+window.APP_VERSION='20261125-195500';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
