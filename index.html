@@ -593,8 +593,8 @@ function fitImg(doc,ph,x,y,bw,bh){
   const k=Math.min(bw/ph.w,bh/ph.h),w=ph.w*k,h=ph.h*k;
   doc.addImage(ph.src,ph.src.startsWith('data:image/png')?'PNG':'JPEG',x+(bw-w)/2,y+(bh-h)/2,w,h);
 }
-function drawPhotos(doc,y,p,A,B){
-  const M=16,g=6,bw=(210-2*M-g)/2,bh=bw*0.78,H=p==='h';
+function drawPhotos(doc,y,p,A,B,ratio=0.78){
+  const M=16,g=6,bw=(210-2*M-g)/2,bh=bw*ratio,H=p==='h';
   [[1,'Avant : '+(H?'housse actuelle':'film actuel'),A],[2,'Après : solution KL Groupe',B]].forEach(([n,lab,o],i)=>{
     const x=M+i*(bw+g);doc.setFillColor(246,250,246);doc.roundedRect(x,y,bw,bh,2,2,'F');
     const ph=phFor(p,n);if(ph)fitImg(doc,ph,x,y,bw,bh);
@@ -604,17 +604,18 @@ function drawPhotos(doc,y,p,A,B){
   });
   return y+bh+14;
 }
-function drawSig(doc,y,p,A,B,dt){
+function drawSig(doc,y,p,A,B,dt,compact){
   const M=16,W=210,nom=$(p+'_sgn').value.trim(),fct=$(p+'_sgf').value.trim();
   doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(...NUIT);doc.text('Validation des mesures',M,y);y+=6;
   doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(...DARK);
   const txt=(nom||'Le signataire')+(fct?', '+fct+',':'')+' confirme avoir constaté les mesures réalisées lors de l\'essai'+(dt?' du '+dt:'')+' : '+
     fmt(A.d)+' g déposés par palette avec la solution actuelle et '+fmt(B.d)+' g avec la solution KL Groupe. Cette validation porte sur les mesures et n\'engage à aucune commande.';
   const l=doc.splitTextToSize(t(txt),W-2*M);doc.text(l,M,y);y+=l.length*5+3;
-  doc.setDrawColor(217,226,218);doc.setLineWidth(.3);doc.roundedRect(M,y,80,32,2,2,'S');
-  fitImg(doc,SIG[p].img(),M+2,y+2,76,28);
-  doc.setFontSize(9);doc.setTextColor(...GREY);doc.text(t((nom||'Signature')+(dt?' - '+dt:'')),M,y+37);
-  return y+42;
+  const sh=compact?24:32;
+  doc.setDrawColor(217,226,218);doc.setLineWidth(.3);doc.roundedRect(M,y,80,sh,2,2,'S');
+  fitImg(doc,SIG[p].img(),M+2,y+2,76,sh-4);
+  doc.setFontSize(9);doc.setTextColor(...GREY);doc.text(t((nom||'Signature')+(dt?' - '+dt:'')),M,y+sh+5);
+  return y+sh+10;
 }
 
 function photoGrid(doc,y,list,newPage){
@@ -711,20 +712,21 @@ function buildPdf(p){
     }
   }
 
-  /* page Constat : photos et validation */
-  if(phFor(p,1)||phFor(p,2)||SIG[p].has){
-    doc.addPage();header();
+  /* page Constat de l'essai + comparatif des réglages, regroupés sur une même page quand ils tiennent */
+  const hasPh=!!(phFor(p,1)||phFor(p,2)),hasSig=SIG[p].has;
+  const cmp=AUD.src===p?regCompare(p):{rows:[]},hasCmp=cmp.rows.length>2;
+  let onPage=false;
+  if(hasPh||hasSig){
+    doc.addPage();header();onPage=true;
     y=H1(doc,'Constat de l\'essai');
-    if(phFor(p,1)||phFor(p,2)){y=drawPhotos(doc,y,p,A,B)+8}
-    if(SIG[p].has)y=drawSig(doc,y,p,A,B,dt);
+    if(hasPh){y=drawPhotos(doc,y,p,A,B,hasCmp?0.6:0.78)+6}
+    if(hasSig)y=drawSig(doc,y,p,A,B,dt,hasCmp);
   }
-
-  /* comparatif des réglages et reportage photo de l'audit */
   if(AUD.src===p){
-    const cmp=regCompare(p);
-    if(cmp.rows.length>2){
-      doc.addPage();header();
-      y=H1(doc,'Comparatif des réglages');
+    if(hasCmp){
+      const need=16+cmp.rows.length*7.6+14;
+      if(onPage&&y+need<=272){y=H2(doc,'Comparatif des réglages',y+4)+3}
+      else{doc.addPage();header();y=H1(doc,'Comparatif des réglages')}
       AT(doc,{startY:y,margin:{left:M,right:M},theme:'grid',
         head:[['Réglage','Pré-étirage','Tension','Poids / palette','Coût / palette','Économie / an','CO2e évité / an']],
         body:cmp.rows.map(o=>[t(o.label+(o.best?' (meilleur)':'')),t(o.pre?o.pre+' %':'-'),t(o.tension||'-'),t(fmt(o.d)+' g'),t(fmt(o.cout,3)+' €'),o.ref?'référence':t(fmt(o.eco)+' €'),o.ref?'-':t(fmt(o.co2/1000,1)+' t')]),
@@ -732,7 +734,7 @@ function buildPdf(p){
         headStyles:{fillColor:GREEN,textColor:255,fontStyle:'bold',halign:'center'},columnStyles:{0:{halign:'left',cellWidth:48},2:{halign:'left'}},
         didParseCell:d=>{if(d.section==='body'&&cmp.rows[d.row.index].best){d.cell.styles.fontStyle='bold';d.cell.styles.textColor=GREEN}},
         alternateRowStyles:{fillColor:[246,250,246]}});
-      y=doc.lastAutoTable.finalY+8;
+      y=doc.lastAutoTable.finalY+7;
       const b=cmp.rows.find(o=>o.best);
       if(b){doc.setFont('helvetica','normal');doc.setFontSize(10.5);doc.setTextColor(...DARK);
         const l=doc.splitTextToSize(t('Le réglage « '+b.label+' » donne le meilleur résultat : '+fmt(b.d)+' g par palette, soit '+fmt(b.eco)+' € d\'économie par an par rapport à la solution actuelle.'),W-2*M);doc.text(l,M,y);y+=l.length*5+6}
@@ -1228,7 +1230,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-072000';
+window.APP_VERSION='20261125-133000';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
