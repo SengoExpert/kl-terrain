@@ -1032,51 +1032,77 @@ function buildMachinePdf(){
 
 function buildImpactPdf(p){
   needData(p);
-  const H=p==='h',r=calc(p),A=r[1],B=r[2],obj=H?'housse':'film';
+  const H=p==='h',r=calc(p),A=r[1],B=r[2],obj=H?'housse':'film',P=proj(p,r);
   const {jsPDF}=window.jspdf,doc=new jsPDF({unit:'mm',format:'a4'}),W=210,M=16;
   const cli=$(p+'_cli').value.trim()||'Client',dv=$(p+'_date').value,dt=dv?new Date(dv+'T12:00').toLocaleDateString('fr-FR'):'',today=new Date().toLocaleDateString('fr-FR');
   const header=()=>pageHead(doc,cli,'Fiche d\'impact environnemental');
-  const tbl={theme:'grid',margin:{left:M,right:M},styles:{font:'helvetica',fontSize:9.5,textColor:DARK,lineColor:[217,226,218],cellPadding:2.2,halign:'right'},
-    headStyles:{fillColor:GREEN,textColor:255,fontStyle:'bold',halign:'center'},columnStyles:{0:{halign:'left',cellWidth:66}},alternateRowStyles:{fillColor:[246,250,246]}};
-  coverHead(doc,cli,'FICHE D\'IMPACT ENVIRONNEMENTAL  |  AUDIT OPTIM\'PACK');
-  let y=60;
-  const need=h=>{if(y+h>272){doc.addPage();header();y=36}};
+  const tbl={theme:'grid',margin:{left:M,right:M},styles:{font:'helvetica',fontSize:9.3,textColor:DARK,lineColor:[217,226,218],cellPadding:2,halign:'right'},
+    headStyles:{fillColor:GREEN,textColor:255,fontStyle:'bold',halign:'center'},columnStyles:{0:{halign:'left',cellWidth:70}},alternateRowStyles:{fillColor:[246,250,246]}};
+  coverHead(doc,cli,'AUDIT OPTIM\'PACK  |  KL GROUPE');
+  let y;
+  const need=h=>{if(y+h>272){doc.addPage();header();y=40}};
+  const title=(txt)=>{doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(...NUIT);doc.text(t(txt),M,y);y+=6};
   const para=(titre,txt,size=10)=>{
     doc.setFont('helvetica','normal');doc.setFontSize(size);const l=doc.splitTextToSize(t(txt),W-2*M);need(10+l.length*size*.47);
-    doc.setFont('helvetica','bold');doc.setFontSize(12.5);doc.setTextColor(...NUIT);doc.text(t(titre),M,y);y+=6;
+    if(titre)title(titre);
     doc.setFont('helvetica','normal');doc.setFontSize(size);doc.setTextColor(...DARK);doc.text(l,M,y);y+=l.length*size*.47+6;
   };
-  y=coverTitle(doc,'Fiche d\'impact environnemental, note de calcul',y);
-  y=infoRow(doc,y,[['Comparaison',(H?'Housse':'Film')+' actuel'+(H?'le':'')+' / KL Groupe'],['Date de l\'essai',dt],['Établie le',today],['Volume',fmt(r.an)+' palettes / an']]);
-  y=KPI(doc,y,[[fmt(r.gCO2/1000,1)+' t','de CO2e évitées par an ('+fmt(r.pCO2,1)+' %)'],[fmt(r.gKg)+' kg','de plastique en moins par an'],[fmt(r.gRep)+' €','d\'éco-contribution REP en moins']])+10;
-  para('Objet','Cette fiche estime l\'effet environnemental annuel du passage à la solution KL Groupe, à partir des mesures réalisées lors de l\'essai sur site. Elle détaille les données, la méthode et les sources utilisées afin que chaque chiffre puisse être vérifié.');
-  need(60);
-  AT(doc,Object.assign({startY:y,head:[['Résultats annuels','Actuel','KL Groupe','Écart']],body:[
+  const note=(txt)=>{doc.setFont('helvetica','italic');doc.setFontSize(8.8);doc.setTextColor(...GREY);const l=doc.splitTextToSize(t(txt),W-2*M);need(l.length*4+2);doc.text(l,M,y);y+=l.length*4+5};
+  /* titre (option 1) */
+  doc.setTextColor(...NUIT);doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text(t('FICHE D\'IMPACT ENVIRONNEMENTAL'),M,60);
+  doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(...DARK);doc.text(t('Mesure et estimation des bénéfices liés à l\'optimisation du conditionnement.'),M,67);
+  doc.setFillColor(...GREEN);doc.rect(M,70.5,18,1.2,'F');y=80;
+  y=infoRow(doc,y,[['Comparaison','Actuel / KL Groupe'],['Date de l\'essai',dt],['Établie le',today],['Volume',fmt(r.an)+' palettes / an']]);
+  y=KPI(doc,y,[[fmt(r.gCO2/1000,1)+' t','de CO2e évitées par an ('+fmt(r.pCO2,1)+' %)'],[fmt(r.gKg)+' kg','de plastique économisé par an'],[fmt(r.gRep)+' €','économie potentielle sur l\'éco-contribution REP, estimation indicative']],30,20)+5;
+  y=KPI(doc,y,[[fmt(r.gVir/1000,1)+' t','de matière plastique vierge économisée par an'],[fmt(r.gMand)+' kg','de mandrins carton en moins chaque année'],[fmt(r.gBob),'bobines en moins par an']],24,16)+9;
+  para('Objet','Cette fiche présente l\'estimation des bénéfices environnementaux annuels liés au passage à la solution KL Groupe, sur la base des mesures réalisées lors de l\'essai sur site. Elle détaille les données utilisées, les méthodes de calcul et les sources de référence afin de garantir la transparence et la traçabilité des résultats présentés. '+
+    'Elle complète l\'audit de performance du conditionnement, dont elle constitue le justificatif environnemental et méthodologique, et peut être transmise à vos services RSE ou environnement.');
+  need(62);title('Résultats annuels');
+  AT(doc,Object.assign({startY:y,head:[['Indicateur','Actuel','KL Groupe','Écart']],body:[
     ['Plastique consommé',t(fmt(A.cons)+' kg'),t(fmt(B.cons)+' kg'),t(fmt(-r.gKg)+' kg ('+fmt(-r.pKg,1)+' %)')],
     ['Dont plastique vierge',t(fmt(A.vir)+' kg'),t(fmt(B.vir)+' kg'),t(fmt(-r.gVir)+' kg')],
-    ['Mandrins carton à évacuer',t(fmt(A.mand)+' kg'),t(fmt(B.mand)+' kg'),t(fmt(-r.gMand)+' kg')],
-    ['Émissions de gaz à effet de serre',t(fmt(A.co2/1000,2)+' t CO2e'),t(fmt(B.co2/1000,2)+' t CO2e'),t(fmt(-r.gCO2/1000,2)+' t ('+fmt(-r.pCO2,1)+' %)')],
+    ['Consommation annuelle de mandrins carton',t(fmt(A.mand)+' kg'),t(fmt(B.mand)+' kg'),t(fmt(-r.gMand)+' kg')],
+    [t('Empreinte carbone estimée du périmètre étudié'),t(fmt(A.co2/1000,2)+' t CO2e'),t(fmt(B.co2/1000,2)+' t CO2e'),t(fmt(-r.gCO2/1000,2)+' t ('+fmt(-r.pCO2,1)+' %)')],
     ['Dont mandrins carton',t(fmt(A.co2M)+' kg CO2e'),t(fmt(B.co2M)+' kg CO2e'),t(fmt(-(A.co2M-B.co2M))+' kg')],
-    ['Éco-contribution REP (indicative)',t(fmt(A.repAn)+' €'),t(fmt(B.repAn)+' €'),t(fmt(-r.gRep)+' €')]]},tbl));
-  y=doc.lastAutoTable.finalY+8;need(50);
-  AT(doc,Object.assign({startY:y,head:[['Données d\'entrée','Actuel','KL Groupe','Origine']],body:[
-    ['Poids déposé par palette',t(fmt(A.d)+' g'),t(fmt(B.d)+' g'),'Mesure de l\'essai'],
-    ['Palettes par an',t(fmt(r.an)),t(fmt(r.an)),'Donnée client'],
-    ['Matière recyclée dans le '+obj,t(fmt(A.rc*100)+' %'),t(fmt(B.rc*100)+' %'),'Fiche produit'],
-    [t(obj.charAt(0).toUpperCase()+obj.slice(1)+' recyclé après usage'),t(fmt(r.rec*100)+' %'),t(fmt(r.rec*100)+' %'),'Hypothèse']]},tbl,{columnStyles:{0:{halign:'left',cellWidth:66},3:{halign:'left'}}}));
+    [t('Éco-contribution REP, estimation indicative'),t(fmt(A.repAn)+' €'),t(fmt(B.repAn)+' €'),t(fmt(-r.gRep)+' €')]]},tbl));
   y=doc.lastAutoTable.finalY+8;
-  para('Méthode',
-    'Plastique consommé = poids déposé par palette x palettes par an. Émissions = plastique consommé x [part recyclée x facteur PE recyclé + part vierge x facteur PE vierge + part non recyclée après usage x facteur incinération]. '+
-    'Facteurs retenus : fabrication du PE vierge '+fmt(r.Fv,2)+' kg CO2e/kg, fabrication du PE recyclé '+fmt(r.Fr,2)+' kg CO2e/kg, incinération '+fmt(r.Fi,2)+' kg CO2e/kg. '+
-    'Mandrins : poids de mandrin x bobines consommées par an, x '+fmt(r.Fc,2)+' kg CO2e/kg de carton fabriqué. '+
-    'Éco-contribution = plastique consommé x '+fmt(r.tarif)+' €/t + mandrins x '+fmt(r.tarifC)+' €/t.');
+  need(48);title('Données d\'entrée');
+  AT(doc,Object.assign({startY:y,head:[['Donnée','Actuel','KL Groupe','Nature de la donnée']],body:[
+    ['Poids déposé par palette',t(fmt(A.d)+' g'),t(fmt(B.d)+' g'),'Mesure terrain'],
+    ['Volume annuel',t(fmt(r.an)+' palettes'),t(fmt(r.an)+' palettes'),'Donnée client'],
+    ['Matière recyclée dans le '+obj,t(fmt(A.rc*100)+' %'),t(fmt(B.rc*100)+' %'),'Fiche technique fournisseur'],
+    [t('Hypothèse de recyclage du '+obj+' après usage'),t(fmt(r.rec*100)+' %'),t(fmt(r.rec*100)+' %'),'Hypothèse de calcul']]},tbl,{columnStyles:{0:{halign:'left',cellWidth:70},3:{halign:'left'}}}));
+  y=doc.lastAutoTable.finalY+5;
+  note('Le taux de recyclage après usage de '+fmt(r.rec*100)+' % est une hypothèse identique appliquée aux deux solutions, et non une mesure de ce qui se passe réellement sur votre site.');
+  /* méthode en trois blocs */
+  need(20);title('Méthode de calcul');
+  const block=(n,ti,lines)=>{doc.setFont('helvetica','normal');doc.setFontSize(9.6);
+    const ls=lines.map(x=>doc.splitTextToSize(t(x),W-2*M-16));const h=10+ls.reduce((a,l)=>a+l.length*4.4,0)+1;need(h+4);
+    doc.setFillColor(...SOFT);doc.roundedRect(M,y,W-2*M,h,2,2,'F');doc.setFillColor(...GREEN);doc.circle(M+6,y+6,3.2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(255,255,255);doc.text(String(n),M+6,y+7.2,{align:'center'});
+    doc.setFontSize(10.5);doc.setTextColor(...NUIT);doc.text(t(ti),M+12,y+7.3);
+    let yy=y+13;doc.setFont('helvetica','normal');doc.setFontSize(9.6);doc.setTextColor(...DARK);ls.forEach(l=>{doc.text(l,M+12,yy,{lineHeightFactor:1.3});yy+=l.length*4.4});y+=h+4};
+  block(1,'Consommation annuelle de plastique',['Poids déposé par palette x palettes par an.',
+    'Exemple : '+fmt(A.d)+' g x '+fmt(r.an)+' palettes = '+fmt(A.cons)+' kg par an pour la solution actuelle, et '+fmt(B.d)+' g x '+fmt(r.an)+' = '+fmt(B.cons)+' kg pour la solution KL Groupe.']);
+  block(2,'Estimation des émissions de CO2e',['Calcul à partir de la consommation de plastique, des facteurs d\'émission retenus et de l\'hypothèse de fin de vie : fabrication du PE vierge ('+fmt(r.Fv,2)+' kg CO2e/kg), fabrication du PE recyclé ('+fmt(r.Fr,2)+' kg CO2e/kg) et incinération de la fraction non recyclée ('+fmt(r.Fi,2)+' kg CO2e/kg).',
+    'Facteur effectif obtenu : '+fmt(A.fkg,3)+' kg CO2e par kg de '+obj+' actuel'+(Math.abs(A.fkg-B.fkg)>0.0005?' et '+fmt(B.fkg,3)+' pour la solution KL Groupe':', identique pour les deux solutions')+'. Mandrins : poids de carton consommé x '+fmt(r.Fc,2)+' kg CO2e/kg.']);
+  block(3,'Estimation de l\'éco-contribution REP',['Poids de matière x barème applicable : '+fmt(r.tarif)+' €/t pour le plastique et '+fmt(r.tarifC)+' €/t pour le carton des mandrins.',
+    'Calcul indicatif, fondé sur les hypothèses tarifaires retenues.']);
+  y+=4;
+  para('Éco-contribution REP : une estimation indicative','Il faut distinguer le poids de matière économisé, l\'estimation de l\'éco-contribution associée à ce poids et l\'économie réellement supportée par l\'entreprise. Ce dernier montant dépend du statut de l\'entreprise au regard de la REP, de son assujettissement, des modalités de déclaration et du barème réellement applicable. '+
+    'Mise en œuvre de la filière française REP des emballages professionnels prévue au 1er janvier 2027, selon les modalités réglementaires applicables.',9.8);
+  /* projection environnementale */
+  need(48);title('Projection environnementale sur 5 ans');
+  y=KPI(doc,y+1,[[fmt(P.kg/1000,1)+' t','de plastique économisé'],[fmt(P.co2/1000,1)+' t','de CO2e évitées'],[fmt(r.gMand*5/1000,1)+' t','de mandrins carton en moins']],24,17)+4;
+  note('Projection à volumes et hypothèses environnementales constants, hors évolution des facteurs d\'émission.');
   para('Sources',
-    'Facteurs d\'émission : Agence européenne pour l\'environnement, ETC/WMGE, « Greenhouse gas emissions and natural capital implications of plastics (including biobased plastics) », 2021. '+
-    'Carton des mandrins : Pro Carton, « The carbon footprint of carton packaging », 2025 (854 kg CO2e par tonne, données 2024, fabrication). '+
-    'Éco-contribution : barèmes 2027 publiés par les éco-organismes de la REP emballages professionnels (Citeo Pro, Léko Pro, Twiice), de 259 à 282 €/t HT hors bonus et malus pour le plastique ; environ 35 €/t pour le papier-carton (ordre de grandeur du barème 2026) ; filière en vigueur au 1er janvier 2027.',9.5);
-  para('Périmètre et limites',
-    'Inclus : fabrication de la matière plastique (vierge et recyclée), fin de vie par incinération de la part non recyclée et fabrication du carton des mandrins. Exclus : extrusion du film, transport, fin de vie des mandrins, emballage des bobines et machine. '+
-    'Ce document est une estimation établie par KL Groupe à partir des mesures de l\'essai. Il ne constitue ni une attestation certifiée, ni une analyse de cycle de vie conforme aux normes ISO 14040 et 14044, ni une vérification par un organisme tiers.',9.5);
+    'Facteurs d\'émission : Agence européenne pour l\'environnement, ETC/WMGE, « Greenhouse gas emissions and natural capital implications of plastics (including biobased plastics) », version 2021. '+
+    'Carton des mandrins : Pro Carton, « The carbon footprint of carton packaging », édition 2025 (854 kg CO2e par tonne, données 2024, fabrication). '+
+    'Éco-contribution : barèmes 2027 publiés par les éco-organismes de la REP emballages professionnels (Citeo Pro, Léko Pro, Twiice), de 259 à 282 €/t HT hors bonus et malus pour le plastique ; environ 35 €/t pour le papier-carton (ordre de grandeur du barème 2026).',9.3);
+  para('Périmètre méthodologique et limites de l\'étude',
+    'Inclus : fabrication de la matière plastique (vierge et recyclée), fin de vie par incinération de la part non recyclée et fabrication du carton des mandrins. Exclus : extrusion du '+obj+', transport, fin de vie des mandrins, emballage des bobines et machine. '+
+    'Les résultats présentés reposent sur un périmètre de calcul défini et sur les facteurs d\'émission indiqués dans cette fiche. Ils constituent une estimation comparative des deux solutions étudiées et ne représentent pas une analyse exhaustive de leur cycle de vie. '+
+    'Ce document est établi par KL Groupe à partir des mesures de l\'essai : il ne constitue ni une attestation certifiée, ni une analyse de cycle de vie conforme aux normes ISO 14040 et 14044, ni une vérification par un organisme tiers.',9.3);
   if(SIG[p].has){need(60);y=drawSig(doc,y,p,A,B,dt)}
   need(14);doc.setFont('helvetica','normal');doc.setFontSize(10);doc.setTextColor(...DARK);
   doc.text(t('Établie par Alexandre SALVADOR, KL Groupe, le '+today+'.'),M,y);
@@ -1471,7 +1497,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261125-213000';
+window.APP_VERSION='20261125-214500';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
