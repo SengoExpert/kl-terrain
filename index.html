@@ -285,8 +285,8 @@ select{appearance:auto}
 <!-- ============ AU METRE (films techniques, film manuel) ============ -->
 <section id="v-lin" class="view" hidden>
   <div class="card"><h2>Client</h2><div class="grid wide">
-    <label for="l_cli">Société</label><input type="text" id="l_cli" placeholder="Nom du client">
-    <label for="l_int">Interlocuteur</label><input type="text" id="l_int">
+    <label for="l_cli">Société</label><input type="text" id="l_cli" placeholder="Repris de l'onglet Film si vide">
+    <label for="l_int">Interlocuteur</label><input type="text" id="l_int" placeholder="Repris de l'onglet Film si vide">
     <label for="l_date">Date</label><input type="date" id="l_date">
   </div><p class="note">Pour les films techniques ou manuels : le calcul se fait en mètres linéaires et en coût par palette, sans jamais afficher de prix au kilo.</p></div>
   <div class="card"><h2>Coût réel d'utilisation, films techniques</h2><div class="grid">
@@ -1270,13 +1270,13 @@ function buildLinPdf(){
   return adaptive(()=>buildLinCore(L))}
 function buildLinCore(L){
   const doc=layDoc(),W=210,M=16,A=L.A,B=L.B,two=L.two,anyM=!A.app||(two&&!B.app);
-  const cli=$('l_cli').value.trim()||'Client',dv=$('l_date').value,dt=dv?new Date(dv+'T12:00').toLocaleDateString('fr-FR'):new Date().toLocaleDateString('fr-FR');
+  const cli=$('l_cli').value.trim()||$('f_cli').value.trim()||'Client',intl=$('l_int').value.trim()||$('f_int').value.trim(),dv=$('l_date').value,dt=dv?new Date(dv+'T12:00').toLocaleDateString('fr-FR'):new Date().toLocaleDateString('fr-FR');
   const f=(v,d=0,u='')=>isFinite(v)?fmt(v,d)+u:'-',sg=(v,d=0,u='')=>isFinite(v)?(v>0?'+':'')+fmt(v,d)+u:'';
   coverHead(doc,cli,'AUDIT OPTIM\'PACK  |  KL GROUPE');
   let y;{doc.setTextColor(...NUIT);doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text(t('COÛT RÉEL D\'UTILISATION DU FILM'),M,60);
     doc.setFont('helvetica','normal');doc.setFontSize(11);doc.setTextColor(...DARK);doc.text(t((anyM?'Valorisation au mètre linéaire':'Valorisation par application')+(two?', comparaison de la solution actuelle et de la solution technique':', coût par palette')),M,67);
     doc.setFillColor(...GREEN);doc.rect(M,70.5,18,1.2,'F');y=80}
-  y=infoRow(doc,y,[['Interlocuteur',$('l_int').value.trim()],['Date',dt],['Volume',L.an>0?fmt(L.an)+' palettes / an':'-'],['Solution'+(two?'s':''),two?A.name+' / '+B.name:A.name]]);
+  y=infoRow(doc,y,[['Interlocuteur',intl],['Date',dt],['Volume',L.an>0?fmt(L.an)+' palettes / an':'-'],['Solution'+(two?'s':''),two?A.name+' / '+B.name:A.name]]);
   y=PARA(doc,'Pour un film technique, le client achète d\'abord une fonction (aération, maintien de charge, protection). Le bon indicateur n\'est pas le prix de la matière mais ce que coûte réellement chaque palette filmée.',y-2,9.8)+1;
   const sur=two&&L.gPal<0;
   y=KPI(doc,y,two?(isFinite(L.gAn)?[[f(Math.abs(L.gAn),0,' €'),(sur?'de surcoût':'d\'économie')+' par an sur le film'],[f(Math.abs(L.gPal),3,' €'),(sur?'de surcoût':'d\'économie')+' unitaire par palette, environ'],[f(A.cPal,3,' €')+' > '+f(B.cPal,3,' €'),'par palette, '+A.name+' puis '+B.name]]:[[f(A.cPal,3,' €')+' > '+f(B.cPal,3,' €'),'par palette, '+A.name+' puis '+B.name],[f(Math.abs(L.gPal),3,' €'),(sur?'de surcoût':'d\'économie')+' unitaire par palette, environ'],[sg(-L.gM,1,' m'),'de film consommé par palette']])
@@ -1826,7 +1826,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261126-015500';
+window.APP_VERSION='20261126-020500';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
