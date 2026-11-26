@@ -824,7 +824,10 @@ function AT(doc,o){if(o&&typeof o.startY==='number')o=Object.assign({},o,{startY
   const cs={};Object.entries(o.columnStyles||{}).forEach(([k,c])=>{cs[k]=Object.assign({},c);if(cmp&&String(c.textColor)===String(GREEN))cs[k].textColor=NUIT});
   const prev=o.didParseCell;
   doc['autoTable'](Object.assign({},o,{theme:'plain',styles:st,headStyles:hs,columnStyles:cs,alternateRowStyles:{},didParseCell:d=>{
-    if(cmp&&d.section==='body'){if(d.column.index===0)d.cell.styles.textColor=GREY;if(d.column.index===hd.length-1&&/^\s*-/.test(String(d.cell.raw)))d.cell.styles.textColor=GREEN}
+    if(cmp&&d.section==='body'){if(d.column.index===0)d.cell.styles.textColor=GREY;if(d.column.index===hd.length-1){
+      /* écart en vert quand il est favorable : plus haut = mieux pour la longueur de bobine, les palettes par bobine et le recyclé ; plus bas = mieux pour le reste */
+      const lab=String(d.row.raw&&d.row.raw[0]||''),v=String(d.cell.raw).trim(),up=/longueur de (la )?bobine|palettes par bobine|recycl/i.test(lab);
+      if(/^\+/.test(v)&&up||/^-/.test(v)&&!up)d.cell.styles.textColor=GREEN}}
     if(prev)prev(d)}}));
 }
 function footAll(doc){
@@ -1826,7 +1829,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261126-020500';
+window.APP_VERSION='20261126-021500';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
