@@ -144,6 +144,7 @@ select{appearance:auto}
     <button role="tab" id="tab-mach" aria-selected="false" data-v="mach">Machine</button>
     <button role="tab" id="tab-ctrl" aria-selected="false" data-v="ctrl">Contrôle</button>
     <button role="tab" id="tab-regl" aria-selected="false" data-v="regl">Réglages</button>
+    <button role="tab" id="tab-mail" aria-selected="false" data-v="mail">Mail</button>
     <button role="tab" id="tab-suivi" aria-selected="false" data-v="suivi">Suivi</button>
   </div>
 </div></header>
@@ -339,6 +340,9 @@ select{appearance:auto}
     <label for="l_ja">Jours travaillés par an</label><input id="l_ja" inputmode="decimal" value="220">
   </div></div>
   <div class="card"><h2>Résultats</h2><div class="tiles" id="l_res"></div></div>
+  <div class="card"><h2>Photos de l'essai</h2><div id="l_phs"></div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="mini" type="button" data-lad="1">Photo film 1</button><button class="mini" type="button" data-lad="2">Photo film 2</button><button class="mini" type="button" data-lad="0">Photo libre</button></div>
+    <input type="file" id="l_file" accept="image/*" class="file"><p class="note">Les photos sont gardées sur ce téléphone et ajoutées à la fiche PDF, avec leur légende et votre remarque.</p></div>
   <div class="card"><h2>Observations</h2><textarea id="l_notes" class="obs" placeholder="Contexte du test : produit emballé chaud, condensation, tenue…"></textarea></div>
   <button class="btn" id="l_pdf">Fiche coût au mètre (PDF)</button>
   <p class="msg" id="l_msg"></p>
@@ -435,6 +439,29 @@ select{appearance:auto}
 </section>
 
 <!-- ============ CONTRÔLE ============ -->
+<!-- ============ MAIL ============ -->
+<section id="v-mail" class="view" hidden>
+  <div class="card"><h2>Mail d'envoi des résultats</h2><div class="grid two">
+    <label for="ml_type">Ce que vous envoyez</label><select id="ml_type"><option value="a">Comparatif film (onglet Au mètre)</option><option value="b" selected>Audit film machine</option><option value="c">Audit film machine et proposition machine</option></select>
+    <label for="ml_src">Essai</label><select id="ml_src"><option value="f">Film</option><option value="h">Housse</option></select>
+    <label for="ml_to">Adresse du destinataire</label><input type="email" id="ml_to" placeholder="facultatif">
+    <label for="ml_int">Interlocuteur</label><input type="text" id="ml_int" placeholder="Repris de l'essai si vide">
+    <label for="ml_reg">Registre</label><select id="ml_reg"><option value="vous">Vouvoiement</option><option value="tu">Tutoiement</option></select>
+    <label for="ml_civ">Civilité (vouvoiement)</label><select id="ml_civ"><option>Monsieur</option><option>Madame</option></select>
+    <label for="ml_num">Chiffres clés dans le mail</label><select id="ml_num"><option value="1">Oui, deux ou trois chiffres</option><option value="0">Non, tout est dans les pièces jointes</option></select>
+  </div><p class="note">Le mail se rédige tout seul à partir des données de l'essai. Vous pouvez le retoucher avant l'envoi.</p></div>
+  <div class="card"><h2>Mail</h2>
+    <label for="ml_sub" class="note">Objet</label><input type="text" id="ml_sub">
+    <label for="ml_body" class="note">Texte</label><textarea id="ml_body" class="obs" style="min-height:320px"></textarea>
+    <p class="note" id="ml_pj"></p>
+  </div>
+  <button class="btn" id="ml_share">Envoyer avec les PDF en pièces jointes</button>
+  <button class="btn ghost" id="ml_open">Ouvrir dans Mail (sans pièces jointes)</button>
+  <button class="btn ghost" id="ml_copy">Copier le texte</button>
+  <button class="btn ghost" id="ml_gen">Rédiger à nouveau</button>
+  <p class="msg" id="ml_msg"></p>
+</section>
+
 <section id="v-suivi" class="view" hidden>
   <div class="card"><h2>Suivi des essais</h2>
     <div class="grid wide"><label for="s_q">Rechercher un client</label><input type="text" id="s_q" placeholder="Nom du client"></div>
@@ -1345,6 +1372,9 @@ function buildLinCore(L){
     y=doc.lastAutoTable.finalY+7}
   const notes=$('l_notes').value.trim();
   if(notes)y=PARA(doc,'Observations : '+notes,y,10)+2;
+  if(LIN.photos.length){
+    if(y+90>276){doc.addPage();pageHead(doc,cli,'Coût réel d\'utilisation du film');y=H1(doc,'Documentation photographique')}else y=H2(doc,'Documentation photographique',y+2)+3;
+    y=photoGrid(doc,y,LIN.photos.map(o=>({ph:o.photo,cap:o.label,sub:o.remark||''})),()=>{doc.addPage();pageHead(doc,cli,'Coût réel d\'utilisation du film');return 36})+4}
   y+=sp(doc);doc.setFont('helvetica','normal');doc.setFontSize(8.3);doc.setTextColor(...GREY);
   {const l=doc.splitTextToSize(t('Méthode : coût au mètre = prix de la bobine / longueur ; coût au mètre carré = coût au mètre / laize. Longueur consommée : '+(A.mMes&&(!two||B.mMes)?'mesurée lors de l\'essai':'estimée à partir de la pesée du film utilisé lors de l\'essai, rapportée au poids linéaire du film (poids net de la bobine, mandrin déduit, divisé par sa longueur)')+'. Coût par palette = mètres consommés x coût au mètre'+(A.app||B.app?', ou prix par application pour une solution valorisée par application':'')+'. Pré-étirage estimé = (nombre de tours x périmètre de la palette de '+fmt(num('l_wp'),2)+' x '+fmt(num('l_lp'),2)+' m) / mètres consommés - 1.'+(L.an>0?' Base annuelle : '+fmt(num('l_pj'))+' palettes par jour sur '+fmt(num('l_ja'))+' jours.':'')+' Valeurs indicatives, issues de l\'essai.'),W-2*M);
     if(y+l.length*3.5>279){const last=doc.getNumberOfPages();
@@ -1456,6 +1486,80 @@ $('m_pdf').addEventListener('click',()=>savePdf(buildMachinePdf,$('m_msg')));
 ['f','h'].forEach(p=>$(p+'_syn').addEventListener('click',()=>savePdf(()=>buildPdf(p,true),$(p+'_msg'))));
 $('l_pdf').addEventListener('click',()=>savePdf(buildLinPdf,$('l_msg')));
 
+/* ---- mail d'envoi des résultats (voix d'Alex : court, direct, sans tiret de ponctuation) ---- */
+function mailWish(){const d=new Date(),h=d.getHours(),j=d.getDay();if(j===5&&h>=12)return 'Bon week-end';return h<12?'Belle journée':h<16?'Bel après-midi':h<19?'Belle fin de journée':'Belle soirée'}
+function mailDocs(type,p){return type==='a'?[['la fiche de coût réel d\'utilisation du film',()=>buildLinPdf()]]
+  :[['la synthèse de l\'audit, en une page',()=>buildPdf(p,true)],['le rapport complet de l\'audit',()=>buildPdf(p)],['la fiche d\'impact environnemental, que vous pouvez transmettre à votre service RSE',()=>buildImpactPdf(p)]]
+    .concat(type==='c'?[['la proposition d\'investissement '+($('m_nom').value.trim()?'pour la '+$('m_nom').value.trim().toLowerCase():'machine'),()=>buildMachinePdf()]]:[])}
+function mailDraft(){
+  const type=$('ml_type').value,p=$('ml_src').value,tu=$('ml_reg').value==='tu',num=$('ml_num').value==='1';
+  const V=(a,b)=>tu?b:a;/* V(vous, tu) */
+  const who=($('ml_int').value.trim()||(type==='a'?($('l_int').value.trim()||$('f_int').value.trim()):$(p+'_int').value.trim())).split(/\s+/).filter(Boolean);
+  const pren=who[0]||'',nom=who.slice(1).join(' ')||who[0]||'';
+  const hello=tu?(pren?'Bonjour '+pren+',':'Bonjour,'):(nom?'Bonjour '+$('ml_civ').value+' '+nom+',':'Bonjour,');
+  const dv=type==='a'?($('l_date').value||$('f_date').value):$(p+'_date').value,dd=dv?new Date(dv+'T12:00').toLocaleDateString('fr-FR',{day:'numeric',month:'numeric'}):'';
+  const ess=dd?'Suite à notre essai du '+dd+', ':'Suite à notre essai, ';
+  const L=[],docs=mailDocs(type,p);let sub;
+  if(type==='a'){
+    const C=lcalc(),A=C.A,B=C.B;sub=C.two?'Comparatif films':'Coût d\'utilisation film';
+    L.push(ess+V('je vous fais suivre','je te fais suivre')+' '+(C.two?'la comparaison de '+A.name+' et de '+B.name+', en coût réel d\'utilisation.':'le coût réel d\'utilisation du '+A.name+'.'));
+    L.push('Le chiffrage est fait au mètre et à la palette.');
+    if(num&&A.ok){
+      if(C.two&&isFinite(C.gAn))L.push('Le coût par palette passe de '+fmt(A.cPal,3)+' € à '+fmt(B.cPal,3)+' €, soit '+fmt(Math.abs(C.gAn))+' € '+(C.gAn>=0?'d\'économie':'de surcoût')+' par an.');
+      else if(C.two)L.push('Le coût par palette passe de '+fmt(A.cPal,3)+' € à '+fmt(B.cPal,3)+' €.');
+      else L.push('Il revient à '+fmt(A.cPal,3)+' € par palette'+(isFinite(A.cAn)?', soit environ '+fmt(A.cAn)+' € par an pour '+fmt(C.an)+' palettes.':'.'));
+      if(C.two&&isFinite(C.hGain)&&C.hGain>0)L.push('J\'attire '+V('votre','ton')+' attention sur le refroidissement : '+(isFinite(C.tc)?fmt(C.tc,1).replace(/,0$/,'')+' °C':'la température cible')+' atteints en '+fmt(B.tt,1).replace(/,0$/,'')+' h contre '+fmt(A.tt,1).replace(/,0$/,'')+' h, selon les mesures de l\'essai.');
+    }
+    if([A,B].some(o=>o.q&&o.q.some(x=>/confirm/i.test(x))))L.push('Certains points restent à confirmer, ils sont indiqués dans la fiche.');
+  }else{
+    const r=calc(p),A=r[1],B=r[2],mat=p==='h'?'housse':'film';
+    sub=type==='c'?'Audit et proposition machine':'Résultats audit conditionnement';
+    L.push(ess+V('je vous fais suivre','je te fais suivre')+' les résultats de l\'audit de '+V('votre','ton')+' conditionnement'+(type==='c'?', ainsi que la proposition machine.':'.'));
+    if(num&&r.gBud>0){
+      L.push('En résumé : '+fmt(r.gBud)+' € d\'économie par an sur le '+mat+' et '+fmt(r.gKg/1000,1)+' t de plastique en moins. Le coût par palette passe de '+fmt(A.cout,3)+' € à '+fmt(B.cout,3)+' €.');
+      if(r.gHeures>=1)L.push('Le temps d\'intervention libéré pour '+V('vos','tes')+' équipes est estimé à '+fmt(r.gHeures)+' h par an.');
+    }
+    if(type==='c'){const m=mcalc(),O=m.hasOp,roi=O?m.roiG:m.roi,ok=m.loc.filter(o=>o.ok),best=ok.length?ok[0]:null;
+      if(num&&isFinite(roi))L.push('Avec les économies sur le '+mat+(O?' et le temps gagné sur la palettisation manuelle':'')+', la machine est amortie en '+fmt(roi,0)+' mois en achat'+(best?'. En location sur '+best.n+' mois, la mensualité est intégralement couverte.':'.'));
+      else L.push('La proposition compare l\'achat et la location sur 24 à 60 mois.');}
+  }
+  const close=[];
+  if(docs.length===1)close.push(V('Ci-joint vous trouverez ','Ci-joint tu trouveras ')+docs[0][0]+'.');
+  else{close.push(V('Ci-joint vous trouverez :','Ci-joint tu trouveras :'));docs.forEach((d,i)=>close.push('- '+d[0]+(i<docs.length-1?',':'.')))}
+  const body=[hello,'',...L.flatMap(x=>[x,'']),...close,'',V('Dans l\'attente de votre retour,','Dans l\'attente de ton retour,'),'',mailWish(),'','Alexandre'].join('\n');
+  return {sub,body:body.replace(/[–—]/g,','),docs};
+}
+function mailFill(){try{const d=mailDraft();$('ml_sub').value=d.sub;$('ml_body').value=d.body;$('ml_pj').textContent='Pièces jointes : '+d.docs.length+' PDF ('+d.docs.map(x=>x[0].split(',')[0]).join(' ; ')+').';fitObs($('ml_body'));save()}catch(e){$('ml_msg').textContent='Le mail n\'a pas pu être rédigé : '+(e.message||e)}}
+['ml_type','ml_src','ml_reg','ml_civ','ml_num','ml_int'].forEach(id=>$(id).addEventListener('change',mailFill));
+$('ml_gen').addEventListener('click',mailFill);
+$('tab-mail').addEventListener('click',()=>{if(!$('ml_body').value.trim())mailFill()});
+$('ml_copy').addEventListener('click',async()=>{const t='Objet : '+$('ml_sub').value+'\n\n'+$('ml_body').value;try{await navigator.clipboard.writeText(t);$('ml_msg').textContent='Texte copié.'}catch(e){$('ml_msg').textContent='Copie impossible ici : sélectionnez le texte à la main.'}});
+$('ml_open').addEventListener('click',()=>{location.href='mailto:'+encodeURIComponent($('ml_to').value.trim())+'?subject='+encodeURIComponent($('ml_sub').value)+'&body='+encodeURIComponent($('ml_body').value)});
+$('ml_share').addEventListener('click',async()=>{const msg=$('ml_msg');
+  if(!window.jspdf){msg.textContent='Le module PDF ne s\'est pas chargé.';return}
+  let files=[];try{files=mailDocs($('ml_type').value,$('ml_src').value).map(([,b])=>{const o=b();return new File([o.doc.output('blob')],o.name,{type:'application/pdf'})})}
+  catch(e){msg.textContent='Les PDF n\'ont pas pu être créés : '+(e.message||e);return}
+  const text=$('ml_body').value;
+  if(navigator.canShare&&navigator.canShare({files,text})){try{await navigator.share({files,text});msg.textContent='Envoyé. Pensez à vérifier l\'objet : '+$('ml_sub').value}catch(e){msg.textContent=e&&e.name==='AbortError'?'Envoi annulé.':'Le partage n\'a pas abouti.'}}
+  else{try{await navigator.clipboard.writeText(text)}catch(e){}for(const f of files){const a=document.createElement('a');a.href=URL.createObjectURL(f);a.download=f.name;document.body.appendChild(a);a.click();a.remove()}
+    msg.textContent='Sur cet appareil, les PDF sont téléchargés et le texte copié : joignez-les à un nouveau mail.'}});
+/* ---- photos de l'onglet Au mètre ---- */
+let LIN={photos:[]},linTarget=null,linTimer=null;
+const saveLin=()=>{clearTimeout(linTimer);linTimer=setTimeout(()=>{if(IDB.db)IDB.put('lin',LIN)},400)};
+function renderLinPhotos(){
+  $('l_phs').innerHTML=LIN.photos.map((o,i)=>'<div style="display:flex;gap:10px;align-items:flex-start;margin:8px 0;padding:8px;border:1px solid var(--line);border-radius:10px">'+
+    '<img src="'+o.photo.src+'" alt="" style="width:84px;height:84px;object-fit:cover;border-radius:8px;flex:none">'+
+    '<div style="flex:1;display:flex;flex-direction:column;gap:6px"><input type="text" data-li="'+i+'" data-lf="label" value="'+esc(o.label)+'" aria-label="Légende">'+
+    '<textarea data-li="'+i+'" data-lf="remark" placeholder="Remarque" style="min-height:44px;font-size:14px">'+esc(o.remark||'')+'</textarea>'+
+    '<button class="mini warn" type="button" data-ldel="'+i+'">Supprimer</button></div></div>').join('');
+}
+document.querySelectorAll('[data-lad]').forEach(b=>b.addEventListener('click',()=>{const n=b.dataset.lad;
+  linTarget=n==='0'?'Photo libre':(($('l_n'+n).value.trim()||(n==='1'?'Solution actuelle':'Solution technique'))+', palette filmée');$('l_file').click()}));
+$('l_file').addEventListener('change',async e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
+  try{const ph=await loadPhoto(f);LIN.photos.push({label:linTarget||'Photo libre',remark:'',photo:ph});saveLin();renderLinPhotos()}
+  catch(err){$('l_msg').textContent='Cette photo n\'a pas pu être lue. Essayez une photo JPEG ou PNG.'}});
+$('l_phs').addEventListener('input',e=>{const i=e.target.dataset.li,f=e.target.dataset.lf;if(i==null||!f)return;LIN.photos[+i][f]=e.target.value;saveLin()});
+$('l_phs').addEventListener('click',e=>{const i=e.target.dataset.ldel;if(i==null)return;LIN.photos.splice(+i,1);saveLin();renderLinPhotos()});
 /* ---- clavier : se ferme en touchant ailleurs ou avec la touche OK ---- */
 document.querySelectorAll('input[inputmode="decimal"],input[type="text"]').forEach(i=>i.setAttribute('enterkeyhint','done'));
 document.addEventListener('touchstart',e=>{const a=document.activeElement;
@@ -1647,6 +1751,7 @@ $('a_imp').addEventListener('change',async e=>{
         A.regs.push({id:'r'+Math.random().toString(36).slice(2,7),label:g.nom||'Réglage',film:g.film==='actuel'?'actuel':'kl',pre:g.preEtirage||'',tension:g.tension||'',d:g.poidsDeposeG!=null?String(g.poidsDeposeG):'',remark:g.remarque||'',photo:ph})}}
       if(D.validation){$(p+'_sgn').value=D.validation.signataire||'';$(p+'_sgf').value=D.validation.fonction||''}
     }
+    if(R&&Array.isArray(R.lin)){const lp=[];for(const o of R.lin){const ph=await pic(o.fichier);if(ph){n++;lp.push({label:o.label,remark:o.remark||'',photo:ph})}}LIN={photos:lp};saveLin();try{renderLinPhotos()}catch(e){}}
     AUD=A;showPh(p,1);showPh(p,2);if(p==='f')film2ctrl(true);saveAudit();renderAudit();render();save();
     const sf=(R&&R.signature)||(D.validation&&D.validation.fichier),sp=await pic(sf);
     if(sp)await putSig(p,sp);else{const st=SIG[p];if(st.size)st.size();const c=$(p+'_sig');c.getContext('2d').clearRect(0,0,c.width,c.height);st.has=false}
@@ -1696,7 +1801,8 @@ $('a_zip').addEventListener('click',async()=>{
     const restauration={version:1,src:p,side:AUD.side,inputs:allIn,
       items:AUD.items.map((it,i)=>({key:it.key,label:it.label,remark:it.remark,fichier:itemF[i]})),
       regs:AUD.regs.map((g,i)=>({id:g.id,label:g.label,pre:g.pre,tension:g.tension,d:g.d,film:g.film||'kl',remark:g.remark,fichier:regF[i]})),
-      avant:avF,apres:apF,signature:SIG[p].has?'signature-validation.png':null};
+      avant:avF,apres:apF,signature:SIG[p].has?'signature-validation.png':null,
+      lin:LIN.photos.map(o=>({label:o.label,remark:o.remark||'',fichier:add(o.photo,'au-metre-'+o.label)}))};
     const r=calc(p),A=r[1],B=r[2],P=proj(p,r);
     const dossier={format:'kl-groupe-audit/1',exporteLe:new Date().toISOString(),type:p==='h'?'housse':'film',
       client:{societe:cli,interlocuteur:$(p+'_int').value.trim(),fonction:$(p+'_fct').value.trim(),dateEssai:dv},
@@ -1716,7 +1822,7 @@ $('a_zip').addEventListener('click',async()=>{
     msg.textContent='Dossier exporté ('+n+' photo'+(n>1?'s':'')+'). Envoyez-le à Claude pour la présentation.';
   }catch(e){msg.textContent=e&&e.code==='declined'?'Export annulé.':'L\'export n\'a pas abouti : '+(e&&e.message||'réessayez')+'.'}
 });
-(async()=>{if(await IDB.open()){const a=await IDB.get('audit');if(a&&a.items)AUD=Object.assign(freshAudit(),a)}renderAudit()})();
+(async()=>{if(await IDB.open()){const a=await IDB.get('audit');if(a&&a.items)AUD=Object.assign(freshAudit(),a);const l=await IDB.get('lin');if(l&&l.photos)LIN=l}renderAudit();try{renderLinPhotos()}catch(e){}})();
 
 /* ---- suivi des essais ---- */
 let HIST=[],DB=null,UID=null;
@@ -1829,7 +1935,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261126-021500';
+window.APP_VERSION='20261126-233500';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
