@@ -318,6 +318,11 @@ select{appearance:auto}
     <label for="l_tam">Température ambiante (°C)</label><input id="l_tam" inputmode="decimal">
     <label for="l_tre">Nombre de répétitions de la mesure</label><input id="l_tre" inputmode="decimal">
   </div><p class="note">Aucune amélioration thermique n'est annoncée sans mesures des deux films dans les mêmes conditions.</p></div>
+  <div class="card"><h2>Valeur du gain de temps (facultatif)</h2><div class="grid two">
+    <label for="l_vp">Palettes concernées par jour</label><input id="l_vp" inputmode="decimal" placeholder="si le gain libère une zone ou une attente">
+    <label for="l_vh">Valeur d'une heure gagnée par palette (€)</label><input id="l_vh" inputmode="decimal" placeholder="coût d'attente ou d'immobilisation">
+    <label for="l_vs">Gain confirmé par le client</label><select id="l_vs"><option value="">Non, gain non valorisé</option><option value="oui">Oui, à valoriser</option></select>
+  </div><p class="note">Le gain de productivité n'est chiffré que si le client confirme que les heures gagnées libèrent une zone, accélèrent une opération ou réduisent une attente.</p></div>
   <div class="card"><h2>Propriétés spécifiques (facultatif)</h2><div class="grid">
     <span></span><span class="colh">Film 1</span><span class="colh kl">Film 2</span>
     <label>Aération</label><input id="l_qa1" type="text"><input id="l_qa2" type="text">
@@ -325,6 +330,7 @@ select{appearance:auto}
     <label>Protection contre la poussière</label><input id="l_qp1" type="text"><input id="l_qp2" type="text">
     <label>Résistance à la perforation</label><input id="l_qr1" type="text"><input id="l_qr2" type="text">
     <input id="l_qon" type="text" placeholder="Autre propriété"><input id="l_qo1" type="text"><input id="l_qo2" type="text">
+    <label>Caractéristique qui le justifie (taux de perforation, surface ouverte, débit d'air…)</label><input id="l_qj1" type="text"><input id="l_qj2" type="text">
   </div><p class="note">Appréciations ou mesures, par exemple « bonne », « 12 daN ». Elles servent à comparer des produits qui ne répondent pas au même besoin.</p></div>
   <div class="card"><h2>Palette et volume</h2><div class="grid two">
     <label for="l_wp">Largeur palette (m)</label><input id="l_wp" inputmode="decimal" value="0,8">
@@ -602,10 +608,10 @@ function lcalc(){
     o.palBob=o.mPal>0&&o.len>0?o.len/o.mPal:NaN;o.pre=o.t>0&&o.mPal>0?(o.t*per/o.mPal-1)*100:NaN;o.cAn=an>0?o.cPal*an:NaN;o.mAn=an>0&&o.mPal>0?o.mPal*an:NaN;
     o.mg=num(k('m'))*1000;o.kgPal=o.d>0?o.d:(o.mPal>0&&o.gm>0?o.mPal*o.gm:NaN);o.kgAn=an>0&&o.kgPal>0?o.kgPal*an/1000:NaN;o.bobAn=an>0&&o.palBob>0?an/o.palBob:NaN;o.mandAn=o.bobAn>0&&o.mg>0?o.bobAn*o.mg/1000:NaN;
     {const Fv=num('fv'),Fi=num('fi'),rec=Math.min(1,Math.max(0,num('fdv')/100));o.co2An=o.kgAn>0?o.kgAn*(Fv+(1-rec)*Fi)+(o.mandAn>0?o.mandAn*num('fc'):0):NaN}
-    o.q=['qa','qm','qp','qr','qo'].map(x=>$(k(x)).value.trim());
+    o.q=['qa','qm','qp','qr','qo'].map(x=>$(k(x)).value.trim());o.qj=$(k('qj')).value.trim();
     o.ti=has(k('ti'))?num(k('ti')):NaN;o.tf=has(k('tf'))?num(k('tf')):NaN;o.tt=has(k('tt'))?num(k('tt')):NaN;o.hasT=isFinite(o.ti)||isFinite(o.tf)||isFinite(o.tt);return o});
-  const [A,B]=F,two=B.ok&&isFinite(B.cPal);
-  return {A,B,two,an,per,qon:$('l_qon').value.trim(),proto:{lieu:$('l_tl').value,id:$('l_tid').value,co:$('l_tco').value,amb:String($('l_tam').value).trim()!==''?num('l_tam'):NaN,rep:num('l_tre')},gPal:two?A.cPal-B.cPal:NaN,gAn:two&&an>0?(A.cPal-B.cPal)*an:NaN,gM:two?A.mPal-B.mPal:NaN,td:num('l_td'),tc:String($('l_tc').value).trim()!==''?num('l_tc'):NaN};
+  const [A,B]=F,two=B.ok&&isFinite(B.cPal),hGain=two&&isFinite(A.tt)&&isFinite(B.tt)?A.tt-B.tt:NaN,vOk=$('l_vs').value==='oui'&&num('l_vp')>0&&num('l_vh')>0&&hGain>0;
+  return {A,B,two,an,per,hGain,vOk,vAn:vOk?num('l_vp')*hGain*num('l_vh')*num('l_ja'):NaN,qon:$('l_qon').value.trim(),proto:{lieu:$('l_tl').value,id:$('l_tid').value,co:$('l_tco').value,amb:String($('l_tam').value).trim()!==''?num('l_tam'):NaN,rep:num('l_tre')},gPal:two?A.cPal-B.cPal:NaN,gAn:two&&an>0?(A.cPal-B.cPal)*an:NaN,gM:two?A.mPal-B.mPal:NaN,td:num('l_td'),tc:String($('l_tc').value).trim()!==''?num('l_tc'):NaN};
 }
 function renderLin(){
   const L=lcalc(),f=(v,d=0,u='')=>isFinite(v)?fmt(v,d)+u:'–';
@@ -1272,7 +1278,7 @@ function buildLinCore(L){
   y=infoRow(doc,y,[['Interlocuteur',$('l_int').value.trim()],['Date',dt],['Volume',L.an>0?fmt(L.an)+' palettes / an':'-'],['Solution'+(two?'s':''),two?A.name+' / '+B.name:A.name]]);
   y=PARA(doc,'Pour un film technique, le client achète d\'abord une fonction (aération, maintien de charge, protection). Le bon indicateur n\'est pas le prix de la matière mais ce que coûte réellement chaque palette filmée.',y-2,9.8)+1;
   const sur=two&&L.gPal<0;
-  y=KPI(doc,y,two?[[f(A.cPal,3,' €')+' > '+f(B.cPal,3,' €'),'par palette, '+A.name+' puis '+B.name],[f(Math.abs(L.gPal),3,' €'),(sur?'de surcoût':'d\'économie')+' par palette'],[isFinite(L.gAn)?f(Math.abs(L.gAn),0,' €'):sg(-L.gM,1,' m'),isFinite(L.gAn)?(sur?'de surcoût':'d\'économie')+' par an':'de film consommé par palette']]
+  y=KPI(doc,y,two?(isFinite(L.gAn)?[[f(Math.abs(L.gAn),0,' €'),(sur?'de surcoût':'d\'économie')+' par an sur le film'],[f(Math.abs(L.gPal),3,' €'),(sur?'de surcoût':'d\'économie')+' unitaire par palette, environ'],[f(A.cPal,3,' €')+' > '+f(B.cPal,3,' €'),'par palette, '+A.name+' puis '+B.name]]:[[f(A.cPal,3,' €')+' > '+f(B.cPal,3,' €'),'par palette, '+A.name+' puis '+B.name],[f(Math.abs(L.gPal),3,' €'),(sur?'de surcoût':'d\'économie')+' unitaire par palette, environ'],[sg(-L.gM,1,' m'),'de film consommé par palette']])
     :[[f(A.cPal,3,' €'),'par palette filmée'],A.app?[f(A.pa,2,' €'),'par application']:[f(A.cm,3,' €'),'le mètre linéaire, laize '+f(A.lz,0,' mm')],A.app?[isFinite(A.cAn)?f(A.cAn,0,' €'):'-','par an']:[f(A.mPal,1,' m'),'consommés par palette']],25,17)+8;
   const lab=o=>o.app?'par application':(o.mMes?'mesurés':'estimés par pesée');
   const rows=(A.app||B.app?[['Mode de valorisation',A.app?'Par application':'Au mètre linéaire',B.app?'Par application':'Au mètre linéaire','']]:[]).concat([
@@ -1288,7 +1294,7 @@ function buildLinCore(L){
   AT(doc,{startY:y,margin:{left:M,right:M},head:[two?['',A.name,B.name,'Écart']:['',A.name]],styles:{halign:'right',fontSize:9,cellPadding:{top:1.3,bottom:1.3,left:2.5,right:2.5}},
     columnStyles:{0:{halign:'left',cellWidth:two?80:110},2:{fontStyle:'bold',textColor:NUIT}},didParseCell:d=>{if(d.section==='head'&&d.column.index===0)d.cell.styles.halign='left'},
     body:rows.map(r=>(two?r:r.slice(0,2)).map(t))});
-  y=doc.lastAutoTable.finalY+7;
+  y=doc.lastAutoTable.finalY+7;const econEnd={p:doc.getNumberOfPages(),y:y-3};
   /* performance technique : seulement si mesurée */
   if(A.hasT||(two&&B.hasT)){
     const both=two&&A.hasT&&B.hasT,tr=[['Température initiale de la palette',f(A.ti,1,' °C'),f(B.ti,1,' °C')],['Température après '+(L.td>0?fmt(L.td,1)+' h':'la durée de mesure'),f(A.tf,1,' °C'),f(B.tf,1,' °C')],
@@ -1299,19 +1305,21 @@ function buildLinCore(L){
     AT(doc,{startY:y,margin:{left:M,right:M},head:[two?['',A.name,B.name]:['',A.name]],styles:{halign:'right',fontSize:9.2,cellPadding:{top:1.6,bottom:1.6,left:2.5,right:2.5}},
       columnStyles:{0:{halign:'left',cellWidth:two?90:110}},didParseCell:d=>{if(d.section==='head'&&d.column.index===0)d.cell.styles.halign='left'},body:tr.map(r=>(two?r:r.slice(0,2)).map(t))});
     y=doc.lastAutoTable.finalY+4;doc.setFont('helvetica','italic');doc.setFontSize(8.6);doc.setTextColor(...GREY);
-    const P=L.proto,pr=[P.lieu?'mesure '+P.lieu.toLowerCase():'lieu de mesure à préciser',P.id?(P.id==='Oui'?'palettes identiques en composition et en masse':'palettes différentes'):'composition des palettes à préciser',P.co?(P.co==='Oui'?'mêmes conditions d\'ambiance et de ventilation':'conditions différentes'):'conditions ambiantes à préciser'].concat(isFinite(P.amb)?['ambiance '+fmt(P.amb,1)+' °C']:[]).concat(P.rep>0?[fmt(P.rep)+' mesure'+(P.rep>1?'s':'')+' par film']:['nombre de répétitions à préciser']);
-    const nl=doc.splitTextToSize(t('Protocole : '+pr.join(', ')+'. '+(both?'Le coût par palette se lit en regard de ce bénéfice technique.':'Mesure d\'un seul film : aucune comparaison thermique n\'est tirée sans mesure de l\'autre solution dans les mêmes conditions.')),W-2*M);doc.text(nl,M,y);y+=nl.length*3.8+4;
+    const P=L.proto,pr=[P.lieu?'Mesure '+P.lieu.toLowerCase()+'.':null,P.id?(P.id==='Oui'?'Palettes identiques en composition et en masse.':'Palettes différentes en composition ou en masse.'):null,
+      P.co?(P.co==='Oui'?'Mêmes conditions d\'ambiance et de ventilation pour les deux films.':'Conditions d\'ambiance ou de ventilation différentes entre les films.'):null,isFinite(P.amb)?'Température ambiante relevée : '+fmt(P.amb,1)+' °C.':null,
+      P.rep>0?(P.rep===1?'Une mesure réalisée pour chaque film.':fmt(P.rep)+' mesures réalisées pour chaque film.'):null].filter(Boolean);
+    const nl=doc.splitTextToSize(t('Protocole : '+(pr.length?pr.join(' '):'à préciser.')+' Résultats indicatifs issus des conditions d\'essai, non garantis de façon systématique. '+(both?'Le coût par palette se lit en regard de ce bénéfice technique.':'Mesure d\'un seul film : aucune comparaison thermique n\'est tirée sans mesure de l\'autre solution dans les mêmes conditions.')),W-2*M);doc.text(nl,M,y);y+=nl.length*3.8+4;
     if(both&&isFinite(A.tt)&&isFinite(B.tt)&&A.tt!==B.tt){const g=A.tt-B.tt;doc.setFont('helvetica','bold');doc.setFontSize(10.5);doc.setTextColor(...(g>0?GREEN:DARK));
-      const gl=doc.splitTextToSize(t(fmt(Math.abs(g),1)+' heure'+(Math.abs(g)>=2?'s':'')+(g>0?' gagnée':' perdue')+(Math.abs(g)>=2?'s':'')+' pour atteindre '+(isFinite(L.tc)?fmt(L.tc,1)+' °C':'la température cible')+' avec '+B.name+', selon les mesures de cet essai.'),W-2*M);doc.text(gl,M,y+1);y+=gl.length*5+2;
+      const tc=isFinite(L.tc)?fmt(L.tc,1)+' °C':'la température cible',hh=v=>fmt(v,1).replace(/,0$/,'')+' heure'+(v>=2?'s':'');const gl=doc.splitTextToSize(t('Lors de cet essai, '+B.name+' a permis d\'atteindre '+tc+' en '+hh(B.tt)+', contre '+hh(A.tt)+' avec '+A.name+', soit '+(g>0?'un gain':'une perte')+' de temps mesuré de '+hh(Math.abs(g))+'.'),W-2*M);doc.text(gl,M,y+1);y+=gl.length*5+2;
       if(g>0){doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(...GREY);const pl=doc.splitTextToSize(t('Si ce refroidissement plus rapide réduit un temps d\'attente avant une opération logistique ou industrielle, il peut en découler un gain de productivité supplémentaire, à mesurer avant de le chiffrer.'),W-2*M);doc.text(pl,M,y);y+=pl.length*3.9+3}}
     y+=3}
   /* propriétés spécifiques */
   {const names=['Aération','Maintien de charge','Protection contre la poussière','Résistance à la perforation',L.qon||'Autre propriété'];
-    const qr=names.map((n,i)=>[n,A.q[i]||'-',B.q[i]||'-']).filter(r=>r[1]!=='-'||(two&&r[2]!=='-'));
+    const qr=names.map((n,i)=>[n,A.q[i]||'-',B.q[i]||'-']).filter(r=>r[1]!=='-'||(two&&r[2]!=='-'));if(qr.length&&(A.qj||B.qj))qr.push(['Caractéristique technique',A.qj||'-',B.qj||'-']);
     if(qr.length){if(y+16+qr.length*7>276){doc.addPage();pageHead(doc,cli,'Coût réel d\'utilisation du film');y=40}
       y=H2(doc,(A.hasT||(two&&B.hasT))?'Propriétés spécifiques':'2. Propriétés spécifiques',y)+2;
       AT(doc,{startY:y,margin:{left:M,right:M},head:[two?['',A.name,B.name]:['',A.name]],styles:{fontSize:9.2,cellPadding:{top:1.6,bottom:1.6,left:2.5,right:2.5}},columnStyles:{0:{cellWidth:two?70:100}},body:qr.map(r=>(two?r:r.slice(0,2)).map(t))});
-      y=doc.lastAutoTable.finalY+7}}
+      y=doc.lastAutoTable.finalY+4;if(!(A.qj||B.qj)){doc.setFont('helvetica','italic');doc.setFontSize(8.6);doc.setTextColor(...GREY);doc.text(t('Appréciations qualitatives issues de l\'essai.'),M,y);y+=4}y+=3}}
   /* performance environnementale */
   if(L.an>0&&isFinite(A.kgAn)){
     const er=[['Plastique consommé par an',f(A.kgAn,0,' kg'),f(B.kgAn,0,' kg'),sg(B.kgAn-A.kgAn,0,' kg')],['Mandrins carton à évacuer par an',f(A.mandAn,0,' kg'),f(B.mandAn,0,' kg'),sg(B.mandAn-A.mandAn,0,' kg')],
@@ -1322,11 +1330,22 @@ function buildLinCore(L){
       columnStyles:{0:{halign:'left',cellWidth:two?80:110},2:{fontStyle:'bold',textColor:NUIT}},didParseCell:d=>{if(d.section==='head'&&d.column.index===0)d.cell.styles.halign='left'},body:er.map(r=>(two?r:r.slice(0,2)).map(t))});
     y=doc.lastAutoTable.finalY+4;doc.setFont('helvetica','italic');doc.setFontSize(8.4);doc.setTextColor(...GREY);
     const el=doc.splitTextToSize(t('Estimation sur '+fmt(L.an)+' palettes par an, avec les facteurs d\'émission de l\'onglet Réglages (fabrication du PE et fin de vie, carton des mandrins). Ordre de grandeur, qui ne remplace pas une analyse de cycle de vie.'),W-2*M);doc.text(el,M,y);y+=el.length*3.7+6}
+  if(two){const sr=[['Économie directe sur le film',isFinite(L.gAn)?(L.gAn>=0?'':'surcoût de ')+fmt(Math.abs(L.gAn))+' € par an':(L.gPal>=0?'':'surcoût de ')+fmt(Math.abs(L.gPal),3)+' € par palette']]
+      .concat(isFinite(L.hGain)&&L.hGain!==0?[['Gain de temps thermique mesuré',fmt(L.hGain,1).replace(/,0$/,'')+' h pour atteindre '+(isFinite(L.tc)?fmt(L.tc,1)+' °C':'la cible')]]:[])
+      .concat(isFinite(A.kgAn)&&isFinite(B.kgAn)?[['Réduction de plastique',fmt(A.kgAn-B.kgAn)+' kg par an'],['Réduction carbone estimée',fmt((A.co2An-B.co2An)/1000,2)+' t CO2e par an']]:[])
+      .concat(isFinite(L.hGain)&&L.hGain>0?[['Gain de productivité lié au refroidissement',L.vOk?fmt(L.vAn)+' € par an ('+fmt(num('l_vp'))+' palettes par jour, '+fmt(num('l_vh'),2)+' € par heure gagnée, confirmé par le client)':'Non valorisé : à confirmer avec le client (palettes concernées, fréquence, coût d\'attente ou d\'immobilisation)']]:[]);
+    if(y+14+sr.length*7.5>276){doc.addPage();pageHead(doc,cli,'Coût réel d\'utilisation du film');y=40}
+    y=H2(doc,'Synthèse de la comparaison',y)+2;
+    AT(doc,{startY:y,margin:{left:M,right:M},body:sr.map(r=>r.map(t)),styles:{fontSize:9.4,cellPadding:{top:1.8,bottom:1.8,left:2.5,right:2.5}},columnStyles:{0:{cellWidth:72,fontStyle:'bold',textColor:NUIT},1:{textColor:DARK}}});
+    y=doc.lastAutoTable.finalY+7}
   const notes=$('l_notes').value.trim();
   if(notes)y=PARA(doc,'Observations : '+notes,y,10)+2;
   y+=sp(doc);doc.setFont('helvetica','normal');doc.setFontSize(8.3);doc.setTextColor(...GREY);
   {const l=doc.splitTextToSize(t('Méthode : coût au mètre = prix de la bobine / longueur ; coût au mètre carré = coût au mètre / laize. Longueur consommée : '+(A.mMes&&(!two||B.mMes)?'mesurée lors de l\'essai':'estimée à partir de la pesée du film utilisé lors de l\'essai, rapportée au poids linéaire du film (poids net de la bobine, mandrin déduit, divisé par sa longueur)')+'. Coût par palette = mètres consommés x coût au mètre'+(A.app||B.app?', ou prix par application pour une solution valorisée par application':'')+'. Pré-étirage estimé = (nombre de tours x périmètre de la palette de '+fmt(num('l_wp'),2)+' x '+fmt(num('l_lp'),2)+' m) / mètres consommés - 1.'+(L.an>0?' Base annuelle : '+fmt(num('l_pj'))+' palettes par jour sur '+fmt(num('l_ja'))+' jours.':'')+' Valeurs indicatives, issues de l\'essai.'),W-2*M);
-    if(y+l.length*3.5>279){doc.addPage();pageHead(doc,cli,'Coût réel d\'utilisation du film');y=40;doc.setFont('helvetica','normal');doc.setFontSize(8.3);doc.setTextColor(...GREY)}doc.text(l,M,y)}
+    if(y+l.length*3.5>279){const last=doc.getNumberOfPages();
+      if(econEnd.p<last&&econEnd.y+l.length*3.5<=279){doc.setPage(econEnd.p);doc.text(l,M,econEnd.y);doc.setPage(last)}
+      else{doc.addPage();pageHead(doc,cli,'Coût réel d\'utilisation du film');y=40;doc.setFont('helvetica','normal');doc.setFontSize(8.3);doc.setTextColor(...GREY);doc.text(l,M,y)}}
+    else doc.text(l,M,y)}
   footAll(doc);
   const safe=cli.normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^A-Za-z0-9]+/g,'_').replace(/^_|_$/g,'')||'Client';
   return {doc,name:'KL_Groupe_Cout_utilisation_'+safe+(dv?'_'+dv:'')+'.pdf'};
@@ -1805,7 +1824,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261126-012500';
+window.APP_VERSION='20261126-014500';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
