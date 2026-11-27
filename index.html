@@ -98,6 +98,7 @@ textarea.obs{min-height:120px;resize:vertical;overflow-y:auto;transition:height 
 .he .acts{display:flex;flex-wrap:wrap;gap:6px}
 .mini{border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:8px;padding:7px 10px;font:600 13px var(--body);cursor:pointer}
 .mini.warn{border-color:var(--muted);color:var(--muted)}
+.mini:disabled{opacity:.3;cursor:default}
 .trend{font-size:12px;color:var(--muted)}
 .acts2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .prog{margin:0;font-weight:600;color:var(--accent)}
@@ -1564,7 +1565,7 @@ function renderLinPhotos(){
     '<img src="'+o.photo.src+'" alt="" style="width:84px;height:84px;object-fit:cover;border-radius:8px;flex:none">'+
     '<div style="flex:1;display:flex;flex-direction:column;gap:6px"><input type="text" data-li="'+i+'" data-lf="label" value="'+esc(o.label)+'" aria-label="Légende">'+
     '<textarea data-li="'+i+'" data-lf="remark" placeholder="Remarque" style="min-height:44px;font-size:14px">'+esc(o.remark||'')+'</textarea>'+
-    '<button class="mini warn" type="button" data-ldel="'+i+'">Supprimer</button></div></div>').join('');
+    '<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="mini" type="button" data-lmv="-1" data-lix="'+i+'"'+(i===0?' disabled':'')+'>▲ Monter</button><button class="mini" type="button" data-lmv="1" data-lix="'+i+'"'+(i===LIN.photos.length-1?' disabled':'')+'>▼ Descendre</button><button class="mini warn" type="button" data-ldel="'+i+'">Supprimer</button></div></div></div>').join('');
 }
 document.querySelectorAll('[data-lad]').forEach(b=>b.addEventListener('click',()=>{const n=b.dataset.lad;
   linTarget=n==='0'?'Photo libre':(($('l_n'+n).value.trim()||(n==='1'?'Solution actuelle':ltyp().alt))+', palette filmée');$('l_file').click()}));
@@ -1572,7 +1573,8 @@ $('l_file').addEventListener('change',async e=>{const fs=[...(e.target.files||[]
   for(const f of fs){try{const ph=await loadPhoto(f);LIN.photos.push({label:linTarget||'Photo libre',remark:'',photo:ph})}catch(err){ko++}}
   saveLin();renderLinPhotos();$('l_phm').textContent=ko?(ko>1?ko+' photos n\'ont':'Une photo n\'a')+' pas pu être lue'+(ko>1?'s':'')+'. Essayez en JPEG ou PNG.':''});
 $('l_phs').addEventListener('input',e=>{const i=e.target.dataset.li,f=e.target.dataset.lf;if(i==null||!f)return;LIN.photos[+i][f]=e.target.value;saveLin()});
-$('l_phs').addEventListener('click',e=>{const i=e.target.dataset.ldel;if(i==null)return;LIN.photos.splice(+i,1);saveLin();renderLinPhotos()});
+$('l_phs').addEventListener('click',e=>{const mb=e.target.closest('[data-lmv]');if(mb){const i=+mb.dataset.lix,j=i+(+mb.dataset.lmv),P=LIN.photos;if(j>=0&&j<P.length){[P[i],P[j]]=[P[j],P[i]];saveLin();renderLinPhotos();const el=document.querySelector('#l_phs [data-lix="'+j+'"]');if(el)el.scrollIntoView({block:'center'})}return}
+  const i=e.target.dataset.ldel;if(i==null)return;LIN.photos.splice(+i,1);saveLin();renderLinPhotos()});
 /* ---- clavier : se ferme en touchant ailleurs ou avec la touche OK ---- */
 document.querySelectorAll('input[inputmode="decimal"],input[type="text"]').forEach(i=>i.setAttribute('enterkeyhint','done'));
 document.addEventListener('touchstart',e=>{const a=document.activeElement;
@@ -1680,16 +1682,16 @@ function renderAuditItems(){
       (id?'<div class="f"><div class="row"><input inputmode="decimal" data-f="w" value="'+esc($(id).value)+'" aria-label="Poids"><span class="u">'+d.unit+'</span></div>'+
         (d.w==='pb'||d.w==='m'?'<div class="seg"><button class="mini" data-a="side" data-v="1" aria-pressed="'+(AUD.side==='1')+'">Film actuel</button><button class="mini" data-a="side" data-v="2" aria-pressed="'+(AUD.side==='2')+'">KL Groupe</button></div>':'')+'</div>':'')+
       '<div class="f"><textarea data-f="remark" placeholder="Remarque" aria-label="Remarque">'+esc(it.remark)+'</textarea></div>'+
-      '<div class="acts">'+(it.photo?'<button class="mini warn" data-a="unshot">Retirer la photo</button>':'')+(d?'':'<button class="mini warn" data-a="del">Supprimer</button>')+'</div></div>'}).join('');
+      '<div class="acts">'+'<button class="mini" data-a="up" aria-label="Monter"'+(i===0?' disabled':'')+'>▲ Monter</button><button class="mini" data-a="down" aria-label="Descendre"'+(i===AUD.items.length-1?' disabled':'')+'>▼ Descendre</button>'+(it.photo?'<button class="mini warn" data-a="unshot">Retirer la photo</button>':'')+(d?'':'<button class="mini warn" data-a="del">Supprimer</button>')+'</div></div>'}).join('');
   $('a_items').innerHTML=html;
   const n=AUD.items.filter(i=>i.photo).length;$('a_prog').textContent=n+' photo'+(n>1?'s':'')+' sur '+AUD.items.length+' prise'+(n>1?'s':'');
 }
 function renderRegs(){
-  $('a_regs').innerHTML=AUD.regs.map(g=>'<div class="ai" data-r="'+esc(g.id)+'"><button class="shot'+(g.photo?' has':'')+'" data-a="shot" aria-label="Photo du réglage">'+(g.photo?'<img alt="" src="'+g.photo.src+'">':'Photo')+'</button>'+
+  $('a_regs').innerHTML=AUD.regs.map((g,i)=>'<div class="ai" data-r="'+esc(g.id)+'"><button class="shot'+(g.photo?' has':'')+'" data-a="shot" aria-label="Photo du réglage">'+(g.photo?'<img alt="" src="'+g.photo.src+'">':'Photo')+'</button>'+
     '<div class="f"><input type="text" data-f="label" value="'+esc(g.label)+'" aria-label="Nom du réglage"></div>'+
     '<div class="f"><div class="row"><input inputmode="decimal" data-f="pre" value="'+esc(g.pre)+'" placeholder="Pré-étirage" aria-label="Pré-étirage"><span class="u">%</span><input type="text" data-f="tension" value="'+esc(g.tension)+'" placeholder="Tension" aria-label="Tension"></div></div>'+
     '<div class="f"><div class="row"><input inputmode="decimal" data-f="d" value="'+esc(g.d)+'" placeholder="Poids déposé" aria-label="Poids déposé"><span class="u">g par palette</span></div><select data-f="film" style="width:100%;margin-top:6px" aria-label="Film utilisé pour ce réglage"><option value="kl"'+(g.film!=='actuel'?' selected':'')+'>Film KL Groupe</option><option value="actuel"'+(g.film==='actuel'?' selected':'')+'>Film actuel</option></select></div>'+
-    '<div class="acts"><button class="mini" data-a="use">Prendre comme résultat principal</button>'+(g.photo?'<button class="mini warn" data-a="unshot">Retirer la photo</button>':'')+'<button class="mini warn" data-a="del">Supprimer</button></div></div>').join('');
+    '<div class="acts"><button class="mini" data-a="use">Prendre comme résultat principal</button>'+'<button class="mini" data-a="up" aria-label="Monter"'+(i===0?' disabled':'')+'>▲ Monter</button><button class="mini" data-a="down" aria-label="Descendre"'+(i===AUD.regs.length-1?' disabled':'')+'>▼ Descendre</button>'+(g.photo?'<button class="mini warn" data-a="unshot">Retirer la photo</button>':'')+'<button class="mini warn" data-a="del">Supprimer</button></div></div>').join('');
 }
 function renderCmp(){
   const c=regCompare(AUD.src);
@@ -1713,6 +1715,7 @@ function onAuditClick(ev){
   const b=ev.target.closest('button[data-a]');if(!b)return;const T=findTarget(b);if(!T||!T.obj)return;const a=b.dataset.a;
   if(a==='shot'){shotTarget=T.obj;$('a_file').click();return}
   if(a==='unshot'){T.obj.photo=null}
+  if(a==='up'||a==='down'){const arr=T.kind==='reg'?AUD.regs:AUD.items,i=arr.indexOf(T.obj),j=i+(a==='up'?-1:1);if(i>=0&&j>=0&&j<arr.length){[arr[i],arr[j]]=[arr[j],arr[i]]}saveAudit();renderAudit();const el=document.querySelector(T.kind==='reg'?'[data-r="'+T.obj.id+'"]':'[data-k="'+T.obj.key+'"]');if(el)el.scrollIntoView({block:'center'});return}
   if(a==='side'){AUD.side=b.dataset.v}
   if(a==='del'){
     if(b.dataset.c!=='1'){b.dataset.c='1';b.textContent='Confirmer';return}
@@ -1948,7 +1951,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261127-010500';
+window.APP_VERSION='20261127-011500';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
