@@ -342,9 +342,9 @@ select{appearance:auto}
     <label for="l_ja">Jours travaillés par an</label><input id="l_ja" inputmode="decimal" value="220">
   </div></div>
   <div class="card"><h2>Résultats</h2><div class="tiles" id="l_res"></div></div>
-  <div class="card"><h2>Photos de l'essai</h2><div id="l_phs"></div>
+  <div class="card"><h2>Photos de l'essai</h2><p class="note" id="l_phn"></p><div id="l_phs"></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px"><button class="mini" type="button" data-lad="1">Photo film 1</button><button class="mini" type="button" data-lad="2">Photo film 2</button><button class="mini" type="button" data-lad="0">Photo libre</button></div>
-    <input type="file" id="l_file" accept="image/*" class="file"><p class="note">Les photos sont gardées sur ce téléphone et ajoutées à la fiche PDF, avec leur légende et votre remarque.</p></div>
+    <input type="file" id="l_file" accept="image/*" multiple class="file"><p class="note">Pas de limite : chaque bouton s'utilise autant de fois que vous voulez, et vous pouvez choisir plusieurs photos d'un coup dans la galerie. Elles sont gardées sur ce téléphone et ajoutées à la fiche PDF, avec leur légende et votre remarque.</p><p class="note" id="l_phm"></p></div>
   <div class="card"><h2>Observations</h2><textarea id="l_notes" class="obs" placeholder="Contexte du test : produit emballé chaud, condensation, tenue…"></textarea></div>
   <button class="btn" id="l_pdf">Fiche coût au mètre (PDF)</button>
   <p class="msg" id="l_msg"></p>
@@ -1559,6 +1559,7 @@ $('ml_share').addEventListener('click',async()=>{const msg=$('ml_msg');
 let LIN={photos:[]},linTarget=null,linTimer=null;
 const saveLin=()=>{clearTimeout(linTimer);linTimer=setTimeout(()=>{if(IDB.db)IDB.put('lin',LIN)},400)};
 function renderLinPhotos(){
+  {const n=LIN.photos.length,el=$('l_phn');if(el)el.textContent=n?n+' photo'+(n>1?'s':'')+' ajoutée'+(n>1?'s':'')+'.':''}
   $('l_phs').innerHTML=LIN.photos.map((o,i)=>'<div style="display:flex;gap:10px;align-items:flex-start;margin:8px 0;padding:8px;border:1px solid var(--line);border-radius:10px">'+
     '<img src="'+o.photo.src+'" alt="" style="width:84px;height:84px;object-fit:cover;border-radius:8px;flex:none">'+
     '<div style="flex:1;display:flex;flex-direction:column;gap:6px"><input type="text" data-li="'+i+'" data-lf="label" value="'+esc(o.label)+'" aria-label="Légende">'+
@@ -1567,9 +1568,9 @@ function renderLinPhotos(){
 }
 document.querySelectorAll('[data-lad]').forEach(b=>b.addEventListener('click',()=>{const n=b.dataset.lad;
   linTarget=n==='0'?'Photo libre':(($('l_n'+n).value.trim()||(n==='1'?'Solution actuelle':ltyp().alt))+', palette filmée');$('l_file').click()}));
-$('l_file').addEventListener('change',async e=>{const f=e.target.files&&e.target.files[0];e.target.value='';if(!f)return;
-  try{const ph=await loadPhoto(f);LIN.photos.push({label:linTarget||'Photo libre',remark:'',photo:ph});saveLin();renderLinPhotos()}
-  catch(err){$('l_msg').textContent='Cette photo n\'a pas pu être lue. Essayez une photo JPEG ou PNG.'}});
+$('l_file').addEventListener('change',async e=>{const fs=[...(e.target.files||[])];e.target.value='';if(!fs.length)return;let ko=0;
+  for(const f of fs){try{const ph=await loadPhoto(f);LIN.photos.push({label:linTarget||'Photo libre',remark:'',photo:ph})}catch(err){ko++}}
+  saveLin();renderLinPhotos();$('l_phm').textContent=ko?(ko>1?ko+' photos n\'ont':'Une photo n\'a')+' pas pu être lue'+(ko>1?'s':'')+'. Essayez en JPEG ou PNG.':''});
 $('l_phs').addEventListener('input',e=>{const i=e.target.dataset.li,f=e.target.dataset.lf;if(i==null||!f)return;LIN.photos[+i][f]=e.target.value;saveLin()});
 $('l_phs').addEventListener('click',e=>{const i=e.target.dataset.ldel;if(i==null)return;LIN.photos.splice(+i,1);saveLin();renderLinPhotos()});
 /* ---- clavier : se ferme en touchant ailleurs ou avec la touche OK ---- */
@@ -1947,7 +1948,7 @@ function setHist(list,where){HIST=list;$('s_where').textContent=where;renderHist
   <span>Une nouvelle version est prête.</span><button id="updBtn" style="border:0;border-radius:8px;background:#2e8b3d;color:#fff;font:700 15px Inter,system-ui,sans-serif;padding:8px 12px">Mettre à jour</button>
 </div>
 <script>
-window.APP_VERSION='20261127-005000';
+window.APP_VERSION='20261127-010500';
 (function(){
   const banner=()=>{const b=document.getElementById('upd');b.hidden=false;document.getElementById('updBtn').onclick=()=>location.reload()};
   let regRef=null;
